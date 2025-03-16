@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Black Jack</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.159.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.159.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-content">
+            <h1>Quantum Black Jack</h1>
+            <p>Loading...</p>
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-container">
+        <div id="canvas-container"></div>
+        
+        <div id="ui-container">
+            <div id="stats-panel">
+                <div id="money">Money: $1000</div>
+                <div id="bet">Bet: $0</div>
+                <div id="hand-value">Hand: 0</div>
+            </div>
+            
+            <div id="chips-panel">
+                <div class="chip" id="hadamard-chip">
+                    <span class="count">3</span>
+                    <div class="chip-icon">H</div>
+                    <div class="tooltip">Hadamard: Put a card in superposition</div>
+                </div>
+                <div class="chip" id="schrodinger-chip">
+                    <span class="count">3</span>
+                    <div class="chip-icon">S</div>
+                    <div class="tooltip">Schrödinger: Collapse a superposed card</div>
+                </div>
+                <div class="chip" id="entanglement-chip">
+                    <span class="count">3</span>
+                    <div class="chip-icon">E</div>
+                    <div class="tooltip">Entanglement: Link two superposed cards</div>
+                </div>
+            </div>
+            
+            <div id="action-panel">
+                <button id="bet-btn">Bet</button>
+                <button id="hit-btn" disabled>Hit</button>
+                <button id="stand-btn" disabled>Stand</button>
+                <button id="reset-btn" disabled>New Game</button>
+            </div>
+
+            <div id="bet-dialog" class="dialog">
+                <h2>Place Your Bet</h2>
+                <div class="bet-controls">
+                    <button id="bet-minus">-</button>
+                    <span id="bet-amount">100</span>
+                    <button id="bet-plus">+</button>
+                </div>
+                <button id="bet-confirm">Confirm</button>
+            </div>
+
+            <div id="shop-dialog" class="dialog">
+                <h2>Quantum Chip Shop</h2>
+                <div class="shop-item">
+                    <div class="chip-preview hadamard">H</div>
+                    <div class="chip-info">
+                        <h3>Hadamard Chip</h3>
+                        <p>Put card in superposition</p>
+                        <p class="price">$100</p>
+                    </div>
+                    <button class="buy-btn" data-chip="hadamard">Buy</button>
+                </div>
+                <div class="shop-item">
+                    <div class="chip-preview schrodinger">S</div>
+                    <div class="chip-info">
+                        <h3>Schrödinger Chip</h3>
+                        <p>Collapse a superposed card</p>
+                        <p class="price">$100</p>
+                    </div>
+                    <button class="buy-btn" data-chip="schrodinger">Buy</button>
+                </div>
+                <div class="shop-item">
+                    <div class="chip-preview entanglement">E</div>
+                    <div class="chip-info">
+                        <h3>Entanglement Chip</h3>
+                        <p>Link two superposed cards</p>
+                        <p class="price">$150</p>
+                    </div>
+                    <button class="buy-btn" data-chip="entanglement">Buy</button>
+                </div>
+                <button id="shop-close">Close</button>
+            </div>
+
+            <div id="tutorial-dialog" class="dialog">
+                <h2>Welcome to Quantum Black Jack!</h2>
+                <div id="tutorial-content"></div>
+                <button id="tutorial-next">Next</button>
+            </div>
+
+            <div id="notification" class="hidden"></div>
+        </div>
+        
+        <button id="shop-btn" class="floating-btn">Shop</button>
+        <button id="help-btn" class="floating-btn">Help</button>
+        <button id="share-btn" class="floating-btn">Share</button>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html> 
