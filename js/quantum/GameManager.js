@@ -27,6 +27,7 @@ export class GameManager extends EventEmitter {
         this.gameState = null;
         this.selectedCard = null;
         this.entanglementTarget = null;
+        this.tutorialShown = false;
         
         // Initialize game instances
         this.blackjackGame = new BlackjackGame(this);
@@ -59,9 +60,60 @@ export class GameManager extends EventEmitter {
     setGameType(type) {
         this.gameType = type;
         this.gameState = type === 'blackjack' ? GameState.BETTING : GameState.POKER_BETTING;
+        
+        // Only clear scene if sceneManager is initialized
+        if (this.sceneManager) {
+            this.sceneManager.clearScene();
+            
+            // Initialize the selected game
+            if (type === 'blackjack') {
+                this.blackjackGame.initialize();
+                this.pokerGame.reset();
+                this.gameState = GameState.WAITING;
+                this.showTutorial('blackjack');
+            } else if (type === 'poker') {
+                this.pokerGame.initialize();
+                this.blackjackGame.reset();
+                this.gameState = GameState.WAITING;
+                this.showTutorial('poker');
+            }
+        }
+    }
+
+    showTutorial(gameType) {
+        if (this.tutorialShown) return;
+        
+        const tutorials = {
+            blackjack: [
+                "Welcome to Quantum Blackjack!",
+                "You can use quantum mechanics to manipulate your cards:",
+                "1. Click a card to select it",
+                "2. Use the Hadamard chip to put it in superposition",
+                "3. Use the Schrödinger chip to measure it",
+                "4. Use the Entanglement chip to entangle two cards",
+                "Try to beat the dealer while using quantum mechanics to your advantage!"
+            ],
+            poker: [
+                "Welcome to Quantum Texas Hold Em!",
+                "You can use quantum mechanics to manipulate your cards:",
+                "1. Click a card to select it",
+                "2. Use the Hadamard chip to put it in superposition",
+                "3. Use the Schrödinger chip to measure it",
+                "4. Use the Entanglement chip to entangle two cards",
+                "Try to make the best hand while using quantum mechanics to your advantage!"
+            ]
+        };
+
+        if (this.uiManager) {
+            this.uiManager.showTutorial(tutorials[gameType]);
+            this.tutorialShown = true;
+        }
     }
 
     async startNewGame() {
+        if (!this.sceneManager) return;
+        
+        this.tutorialShown = false;
         if (this.gameType === 'blackjack') {
             await this.blackjackGame.startNewGame();
         } else if (this.gameType === 'poker') {
@@ -1067,27 +1119,6 @@ export class GameManager extends EventEmitter {
         } else {
             this.pokerGame = new TexasHoldEm(this);
             this.gameState = 'poker_initial';
-        }
-    }
-
-    setGameType(type) {
-        this.gameType = type;
-        this.gameState = GameState.WAITING;
-        this.selectedCard = null;
-        this.entanglementTarget = null;
-        
-        // Clear any existing cards
-        this.sceneManager.clearScene();
-        
-        // Initialize the selected game
-        if (type === 'blackjack') {
-            this.blackjackGame.initialize();
-            this.pokerGame.reset();
-            this.gameState = GameState.WAITING;
-        } else if (type === 'poker') {
-            this.pokerGame.initialize();
-            this.blackjackGame.reset();
-            this.gameState = GameState.WAITING;
         }
     }
 
