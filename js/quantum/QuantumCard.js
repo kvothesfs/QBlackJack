@@ -421,6 +421,22 @@ export class QuantumCard {
         return this.entangledWith !== null;
     }
 
+    // Get the current value of the card (for collapsed cards)
+    getValue() {
+        if (this.collapsed) {
+            return this.currentState.blackjackValue();
+        } else {
+            // If not collapsed, return average value
+            return this.getAverageValue();
+        }
+    }
+    
+    // Get the average value for cards in superposition
+    getAverageValue() {
+        const values = this.getPossibleValues();
+        return values.reduce((sum, val) => sum + val, 0) / values.length;
+    }
+
     // Easing function for smoother animations
     easeInOutQuad(t) {
         return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;

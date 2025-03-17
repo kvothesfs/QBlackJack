@@ -240,6 +240,37 @@ export class GameManager extends EventEmitter {
         return card;
     }
 
+    // Combined method to deal card to either player or dealer
+    dealCard(isDealer = false) {
+        try {
+            // Draw card states from the deck
+            const [state1, state2] = this.getNextCardStates();
+            
+            // Create a quantum card
+            const card = new QuantumCard(state1, state2, this.assetLoader);
+            
+            // Determine position based on which hand and number of cards
+            let position;
+            if (isDealer) {
+                position = new THREE.Vector3((this.dealerCards.length - 1) * 0.8, 0, 0);
+                this.sceneManager.addCard(card, position, true); // isDealer = true
+                this.dealerCards.push(card);
+            } else {
+                position = new THREE.Vector3((this.playerCards.length - 1) * 0.8, 0, 0);
+                this.sceneManager.addCard(card, position, false);
+                this.playerCards.push(card);
+            }
+            
+            // Flip card to face up
+            card.flipToFront();
+            
+            return card;
+        } catch (error) {
+            console.error("Error dealing card:", error);
+            return null;
+        }
+    }
+
     getNextCardStates() {
         if (this.deck.length < 2) {
             this.shuffleDeck();
@@ -825,6 +856,116 @@ export class GameManager extends EventEmitter {
             const superposedCards = this.playerCards.filter(c => c.isInSuperposition).length;
             const entangledCards = this.playerCards.filter(c => c.isEntangled).length / 2;
             this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
+        }
+    }
+    
+    // Calculate hand value accounting for Aces
+    getHandValue(cards) {
+        if (!cards || cards.length === 0) return 0;
+        
+        let total = 0;
+        let aceCount = 0;
+        
+        // First pass: Count all cards at face value, mark Aces
+        for (const card of cards) {
+            if (card.isInSuperposition) {
+                // For cards in superposition, use average value
+                total += card.getAverageValue();
+            } else {
+                const value = card.getValue();
+                if (value === 1) {
+                    aceCount++;
+                    total += 11; // Temporarily count Ace as 11
+                } else {
+                    total += value;
+                }
+            }
+        }
+        
+        // Second pass: Adjust Aces to 1 as needed
+        while (total > 21 && aceCount > 0) {
+            total -= 10; // Change an Ace from 11 to 1
+            aceCount--;
+        }
+        
+        return Math.round(total);
+    }
+    
+    // Handle dealer's turn
+    async dealerPlay() {
+        this.gameState = GameState.DEALER_TURN;
+        
+        // Flip the dealer's hidden card
+        if (this.dealerCards.length > 0) {
+            const hiddenCard = this.dealerCards[0];
+            if (!hiddenCard.isFaceUp) {
+                hiddenCard.flip();
+                
+                // Play card flip sound
+                if (this.soundManager) {
+                    this.soundManager.playCardFlipSound();
+                }
+                
+                // Small pause after flipping
+                await this.sleep(500);
+            }
+        }
+        
+        // Keep drawing cards until dealer has 17+
+        let dealerValue = this.getHandValue(this.dealerCards);
+        while (dealerValue < 17) {
+            this.dealCard(true); // Deal to dealer
+            
+            // Play card sound
+            if (this.soundManager) {
+                this.soundManager.playCardPlaceSound();
+            }
+            
+            dealerValue = this.getHandValue(this.dealerCards);
+            
+            // Update UI
+            if (this.uiManager) {
+                this.uiManager.updateHandValues(this.getHandValue(this.playerCards), dealerValue);
+            }
+            
+            // Small pause between cards
+            await this.sleep(500);
+        }
+        
+        // After dealer finishes, determine winner
+        this.gameState = GameState.RESOLVING;
+        
+        // Get final values
+        const playerValue = this.getHandValue(this.playerCards);
+        
+        // Check for dealer bust
+        if (dealerValue > 21) {
+            this.endGame('player');
+        } 
+        // Compare hands
+        else if (playerValue > dealerValue) {
+            this.endGame('player');
+        } 
+        else if (dealerValue > playerValue) {
+            this.endGame('dealer');
+        } 
+        else {
+            this.endGame('tie');
+        }
+    }
+    
+    // Determine winner and update UI
+    endGame(winner) {
+        this.gameState = GameState.GAME_OVER;
+        
+        if (this.uiManager) {
+            if (winner === 'player') {
+                this.uiManager.showWin();
+            } else if (winner === 'dealer') {
+                this.uiManager.showLose();
+            } else {
+                this.uiManager.showTie();
+            }
         }
     }
 } 
