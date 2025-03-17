@@ -32,14 +32,27 @@ export class SoundManager {
     }
 
     addListenerToCamera(camera) {
-        camera.add(this.listener);
-        
-        // Start background music
-        this.startBackgroundMusic();
+        if (camera && this.listener) {
+            camera.add(this.listener);
+            
+            // Start background music
+            this.startBackgroundMusic();
+        } else {
+            console.error("Cannot add listener to camera: Camera or listener is undefined");
+        }
+    }
+
+    getSound(name) {
+        // Check if the assetLoader exists and has the getSound method
+        if (this.assetLoader && typeof this.assetLoader.getSound === 'function') {
+            return this.assetLoader.getSound(name);
+        }
+        // Return null if assetLoader doesn't exist or doesn't have getSound
+        return null;
     }
 
     createSound(name, category = 'sfx', loop = false, volume = 1.0) {
-        const buffer = this.assetLoader.getSound(name);
+        const buffer = this.getSound(name);
         if (buffer) {
             // Use loaded sound buffer
             const sound = new THREE.Audio(this.listener);
@@ -235,7 +248,7 @@ export class SoundManager {
             return sound;
         } else {
             // Try to create the sound if it doesn't exist yet
-            const buffer = this.assetLoader.getSound(name);
+            const buffer = this.getSound(name);
             if (buffer) {
                 const sound = this.createSound(name);
                 if (sound) {
@@ -561,18 +574,195 @@ export class SoundManager {
     }
 
     playCardPlace() {
-        return this.playProceduralSound('cardPlace', 1.0 + (Math.random() * 0.2 - 0.1));
+        return this.playProceduralSound('cardPlace', 1.0);
     }
 
     playCardFlip() {
-        return this.playProceduralSound('cardFlip', 1.0 + (Math.random() * 0.2 - 0.1));
+        return this.playProceduralSound('cardFlip', 1.0);
     }
 
     playWinSound() {
-        return this.playProceduralSound('win');
+        return this.playProceduralSound('win', 1.0);
     }
 
     playLoseSound() {
-        return this.playProceduralSound('lose');
+        return this.playProceduralSound('lose', 1.0);
+    }
+
+    // Add these missing methods that might be called elsewhere in the code
+    
+    pauseAll() {
+        // Pause all sounds
+        Object.values(this.sounds).forEach(soundData => {
+            if (soundData.sound && soundData.sound.isPlaying) {
+                soundData.sound.pause();
+            }
+        });
+        
+        // Pause background music
+        if (this.backgroundMusic) {
+            // Store current volumes before pausing
+            this.backgroundMusic.gains.forEach(gain => {
+                gain._pausedValue = gain.gain.value;
+                gain.gain.value = 0;
+            });
+        }
+    }
+    
+    resumeAll() {
+        // Resume all sounds
+        Object.values(this.sounds).forEach(soundData => {
+            // Don't automatically resume all sounds, only the background music
+        });
+        
+        // Resume background music
+        if (this.backgroundMusic) {
+            // Restore volumes
+            this.backgroundMusic.gains.forEach(gain => {
+                if (gain._pausedValue !== undefined) {
+                    gain.gain.value = gain._pausedValue;
+                    delete gain._pausedValue;
+                }
+            });
+        }
+    }
+    
+    // Update this method to safely play procedural sounds
+    playProceduralSound(type, volume = 0.5) {
+        try {
+            if (!this.soundEnabled) return null;
+            
+            // Create oscillator and gain nodes
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            // Connect oscillator to gain node and gain node to destination
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            // Set volume
+            gainNode.gain.value = volume * this.masterVolume;
+            
+            // Set sound parameters based on type
+            switch (type) {
+                case 'cardPlace':
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 300;
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.3);
+                    break;
+                    
+                case 'cardFlip':
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.value = 500;
+                    gainNode.gain.setValueAtTime(0.01, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(volume * this.masterVolume, this.audioContext.currentTime + 0.1);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.3);
+                    break;
+                    
+                case 'win':
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.2);
+                    oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 0.4);
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.6);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.6);
+                    break;
+                    
+                case 'lose':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.2);
+                    oscillator.frequency.exponentialRampToValueAtTime(200, this.audioContext.currentTime + 0.4);
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.6);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.6);
+                    break;
+                    
+                case 'superposition':
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(600, this.audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(900, this.audioContext.currentTime + 0.1);
+                    oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.4);
+                    break;
+                    
+                case 'entanglement':
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(700, this.audioContext.currentTime + 0.15);
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.5);
+                    break;
+                    
+                case 'collapse':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.3);
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.5);
+                    break;
+                    
+                case 'hover':
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 600;
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume * 0.2, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.1);
+                    break;
+                    
+                case 'click':
+                    oscillator.type = 'square';
+                    oscillator.frequency.value = 800;
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume * 0.3, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.1);
+                    break;
+                    
+                default:
+                    // Default simple beep
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 500;
+                    gainNode.gain.setValueAtTime(volume * this.masterVolume, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.2);
+            }
+            
+            return { oscillator, gainNode };
+        } catch (error) {
+            console.error("Error playing procedural sound:", error);
+            return null;
+        }
+    }
+    
+    toggleMute() {
+        this.soundEnabled = !this.soundEnabled;
+        
+        if (!this.soundEnabled) {
+            // Mute all sounds
+            this.pauseAll();
+        } else {
+            // Unmute and resume background music
+            this.resumeAll();
+        }
+        
+        return this.soundEnabled;
     }
 } 

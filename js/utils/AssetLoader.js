@@ -473,7 +473,23 @@ export class AssetLoader {
         if (this.sounds[name] && this.sounds[name].loaded) {
             return this.sounds[name].buffer;
         }
-        console.warn(`Sound ${name} not found or not loaded.`);
+        
+        // If not found, check if we need to generate a procedural sound
+        if (!this.sounds[name]) {
+            // Automatically register a procedural sound if not found
+            this.sounds[name] = {
+                path: `procedural://${name}`,
+                loaded: true,
+                buffer: null // Will use Web Audio API for procedural sounds
+            };
+            this.toLoad++;
+            this.loaded++;
+            
+            console.log(`Registered procedural sound: ${name}`);
+            return null; // Return null to indicate it's a procedural sound
+        }
+        
+        console.warn(`Sound ${name} found but not loaded.`);
         return null;
     }
 
