@@ -12,6 +12,9 @@ export class QuantumCard {
         this.currentState = this.state1; // Default to first state
         this.entangledWith = null; // Reference to another card this is entangled with
         
+        // Card state
+        this.isFaceUp = false; // Track if card is face up or face down
+        
         // Probability amplitudes (complex numbers represented as {real, imaginary})
         // Initially 100% state1, 0% state2
         this.amplitudes = {
@@ -36,7 +39,8 @@ export class QuantumCard {
     }
 
     createMesh() {
-        const cardGeometry = new THREE.BoxGeometry(1.4, 0.01, 2);
+        // Create a larger card for better visibility
+        const cardGeometry = new THREE.BoxGeometry(2.8, 0.01, 4);
         const cardMaterial = new THREE.MeshStandardMaterial({
             color: 0xffffff,
             roughness: 0.3,
@@ -188,10 +192,12 @@ export class QuantumCard {
     }
 
     flipToFront(duration = 0.5) {
+        this.isFaceUp = true; // Set card as face up
         return this.animateRotation(Math.PI, 0, duration);
     }
 
     flipToBack(duration = 0.5) {
+        this.isFaceUp = false; // Set card as face down
         return this.animateRotation(0, Math.PI, duration);
     }
 
@@ -440,5 +446,13 @@ export class QuantumCard {
     // Easing function for smoother animations
     easeInOutQuad(t) {
         return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    // Simple flip method that flips card to front
+    flip() {
+        // Set that the card is now face up
+        this.isFaceUp = true;
+        // Just call the existing flipToFront method
+        return this.flipToFront();
     }
 } 

@@ -32,14 +32,16 @@ export class SceneManager {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         
-        // Create object containers
+        // Create object containers with adjusted positions for better visibility
         this.playerCardsGroup = new THREE.Group();
-        this.playerCardsGroup.position.set(0, 0.1, 1);
+        this.playerCardsGroup.position.set(0, 0.5, 3); // Move player cards closer to camera
         this.scene.add(this.playerCardsGroup);
+        console.log("Player cards group position:", this.playerCardsGroup.position);
         
         this.dealerCardsGroup = new THREE.Group();
-        this.dealerCardsGroup.position.set(0, 0.1, -1);
+        this.dealerCardsGroup.position.set(0, 0.5, -3); // Move dealer cards further from camera
         this.scene.add(this.dealerCardsGroup);
+        console.log("Dealer cards group position:", this.dealerCardsGroup.position);
         
         // Setup interactive objects registry
         this.interactiveObjects = [];
@@ -49,8 +51,10 @@ export class SceneManager {
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
         this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-        this.camera.position.set(0, 5, 5);
+        this.camera.position.set(0, 8, 7);
         this.camera.lookAt(0, 0, 0);
+        
+        console.log("Camera position:", this.camera.position);
     }
 
     setupRenderer() {
@@ -215,6 +219,9 @@ export class SceneManager {
     addCard(card, position, isDealer = false) {
         const group = isDealer ? this.dealerCardsGroup : this.playerCardsGroup;
         group.add(card.mesh);
+        
+        // Log card position for debugging
+        console.log(`Adding ${isDealer ? 'dealer' : 'player'} card at position:`, position);
         
         // Position the card within its group
         card.mesh.position.copy(position);
@@ -396,6 +403,13 @@ export class SceneManager {
             const hue = (time * 0.1) % 1;
             const color = new THREE.Color().setHSL(hue, 1, 0.5);
             this.rotatingLight.color = color;
+        }
+        
+        // Log rendering activity occasionally
+        if (Math.random() < 0.01) { // Log only 1% of the time to avoid console spam
+            console.log("Scene rendering - Player cards:", 
+                this.playerCardsGroup.children.length, 
+                "Dealer cards:", this.dealerCardsGroup.children.length);
         }
         
         // Render the scene

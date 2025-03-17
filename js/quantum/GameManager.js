@@ -175,6 +175,8 @@ export class GameManager extends EventEmitter {
         this.gameState = GameState.PLAYER_TURN;
         this.emit('gameStateChanged', this.gameState);
         
+        console.log("Dealing initial cards...");
+        
         // Deal initial cards (2 for player, 2 for dealer with one face down)
         await this.dealCardToPlayer();
         await this.dealCardToDealer(false); // Face up
@@ -183,6 +185,8 @@ export class GameManager extends EventEmitter {
         
         // Check for blackjack
         this.checkForBlackjack();
+        
+        console.log("Initial cards dealt - Player:", this.playerCards.length, "Dealer:", this.dealerCards.length);
     }
 
     async dealCardToPlayer() {
@@ -838,6 +842,8 @@ export class GameManager extends EventEmitter {
     }
     
     startNewGame() {
+        console.log("Starting new game...");
+        
         // Clear cards
         this.clearTable();
         
@@ -857,6 +863,8 @@ export class GameManager extends EventEmitter {
             const entangledCards = this.playerCards.filter(c => c.isEntangled).length / 2;
             this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
         }
+        
+        console.log("New game started with state:", this.gameState);
     }
     
     // Calculate hand value accounting for Aces
