@@ -44,7 +44,7 @@ export class TexasHoldEm {
         }
     }
 
-    dealInitialCards() {
+    async dealInitialCards() {
         this.shuffleDeck();
         
         // Deal two cards to player and dealer
@@ -65,13 +65,28 @@ export class TexasHoldEm {
                 this.gameManager.assetLoader
             );
             
+            // Position cards
+            const playerXOffset = (this.playerHand.length - 1) * 1.5;
+            const dealerXOffset = (this.dealerHand.length - 1) * 1.5;
+            
+            const playerPosition = new THREE.Vector3(playerXOffset, 0.1, 2);
+            const dealerPosition = new THREE.Vector3(dealerXOffset, 0.1, -2);
+            
+            this.gameManager.sceneManager.addCard(playerQuantumCard, playerPosition);
+            this.gameManager.sceneManager.addCard(dealerQuantumCard, dealerPosition, true);
+            
             this.playerHand.push(playerQuantumCard);
             this.dealerHand.push(dealerQuantumCard);
+            
+            // Flip player cards face up
+            await playerQuantumCard.flipToFront();
         }
     }
 
-    dealFlop() {
+    async dealFlop() {
         this.gameState = 'flop';
+        const flopStartX = -2; // Start position for flop cards
+        
         for (let i = 0; i < 3; i++) {
             const card = this.deck.pop();
             const quantumCard = new QuantumCard(
@@ -79,11 +94,17 @@ export class TexasHoldEm {
                 this.deck.pop(), // Alternative state
                 this.gameManager.assetLoader
             );
+            
+            // Position flop cards in the middle
+            const position = new THREE.Vector3(flopStartX + (i * 1.5), 0.1, 0);
+            this.gameManager.sceneManager.addCard(quantumCard, position);
             this.communityCards.push(quantumCard);
+            
+            await quantumCard.flipToFront();
         }
     }
 
-    dealTurn() {
+    async dealTurn() {
         this.gameState = 'turn';
         const card = this.deck.pop();
         const quantumCard = new QuantumCard(
@@ -91,10 +112,16 @@ export class TexasHoldEm {
             this.deck.pop(), // Alternative state
             this.gameManager.assetLoader
         );
+        
+        // Position turn card after flop
+        const position = new THREE.Vector3(2.5, 0.1, 0);
+        this.gameManager.sceneManager.addCard(quantumCard, position);
         this.communityCards.push(quantumCard);
+        
+        await quantumCard.flipToFront();
     }
 
-    dealRiver() {
+    async dealRiver() {
         this.gameState = 'river';
         const card = this.deck.pop();
         const quantumCard = new QuantumCard(
@@ -102,7 +129,13 @@ export class TexasHoldEm {
             this.deck.pop(), // Alternative state
             this.gameManager.assetLoader
         );
+        
+        // Position river card after turn
+        const position = new THREE.Vector3(4, 0.1, 0);
+        this.gameManager.sceneManager.addCard(quantumCard, position);
         this.communityCards.push(quantumCard);
+        
+        await quantumCard.flipToFront();
     }
 
     placeBet(amount) {
@@ -268,5 +301,10 @@ export class TexasHoldEm {
         
         // Update UI
         this.updateUI();
+        
+        // Enable betting controls
+        if (this.gameManager.uiManager) {
+            this.gameManager.uiManager.updateStatus("Place your bet!");
+        }
     }
 } 

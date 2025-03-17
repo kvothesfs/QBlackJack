@@ -55,11 +55,9 @@ export class BlackjackGame {
         const [state1, state2] = this.getNextCardStates();
         const card = new QuantumCard(state1, state2, this.gameManager.assetLoader);
         
-        const position = new THREE.Vector3(
-            (this.playerCards.length - 1) * 0.8,
-            0,
-            0
-        );
+        // Calculate position based on number of cards
+        const xOffset = (this.playerCards.length - 1) * 1.5; // Spread cards horizontally
+        const position = new THREE.Vector3(xOffset, 0.1, 2); // Slightly above table, closer to player
         
         this.gameManager.sceneManager.addCard(card, position);
         this.playerCards.push(card);
@@ -72,11 +70,9 @@ export class BlackjackGame {
         const [state1, state2] = this.getNextCardStates();
         const card = new QuantumCard(state1, state2, this.gameManager.assetLoader);
         
-        const position = new THREE.Vector3(
-            (this.dealerCards.length - 1) * 0.8,
-            0,
-            0
-        );
+        // Calculate position based on number of cards
+        const xOffset = (this.dealerCards.length - 1) * 1.5; // Spread cards horizontally
+        const position = new THREE.Vector3(xOffset, 0.1, -2); // Slightly above table, closer to dealer
         
         this.gameManager.sceneManager.addCard(card, position, true);
         this.dealerCards.push(card);

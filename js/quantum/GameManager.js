@@ -18,69 +18,140 @@ export const GameState = {
 };
 
 export class GameManager extends EventEmitter {
-    constructor(sceneManager, soundManager, assetLoader, uiManager) {
+    constructor() {
         super();
+        this.sceneManager = null;
+        this.assetLoader = null;
+        this.uiManager = null;
+        this.gameType = null;
+        this.gameState = null;
+        this.selectedCard = null;
+        this.entanglementTarget = null;
+        
+        // Initialize game instances
+        this.blackjackGame = new BlackjackGame(this);
+        this.pokerGame = new TexasHoldEm(this);
+    }
+
+    initialize(sceneManager, assetLoader, uiManager) {
         this.sceneManager = sceneManager;
-        this.soundManager = soundManager;
         this.assetLoader = assetLoader;
         this.uiManager = uiManager;
         
-        // Add the sound listener to the camera - safely check if camera exists
-        if (sceneManager && sceneManager.camera) {
-            try {
-                this.soundManager.addListenerToCamera(sceneManager.camera);
-            } catch (error) {
-                console.error("Failed to add sound listener to camera:", error);
-            }
-        } else {
-            console.warn("Camera not available yet, will add sound listener when camera is ready");
-            // We'll add the listener later when the camera is available
-            this._pendingListenerAdd = true;
-        }
-        
-        // Game variables
-        this.money = 1000; // Starting money
-        this.bet = 0;
-        this.gameState = GameState.WAITING;
-        
-        // Quantum chips
-        this.chips = {
-            hadamard: 3, // Put card in superposition
-            schrodinger: 3, // Collapse card
-            entanglement: 3 // Entangle two cards
-        };
-        
-        // Cards
-        this.playerCards = [];
-        this.dealerCards = [];
-        this.selectedCard = null; // For quantum operations
-        this.cardForEntanglement = null; // First card selected for entanglement
-        
-        // Deck
-        this.deck = CardState.createDeck();
-        this.shuffleDeck();
-        
-        // Set up mouse interactions
-        this.setupMouseEvents();
-        
-        // Reference to UI manager (will be set later)
-        this.uiManager = null;
-        
-        // Last game timestamp for update
-        this.lastTime = performance.now();
-        
-        this.gameType = null;
-        
-        // Initialize both games
-        this.blackjackGame = new BlackjackGame(this);
-        this.pokerGame = new TexasHoldEm(this);
-        
-        // Set up event listeners for card selection
-        this.sceneManager.onObjectClick = (card) => {
+        // Set up mouse events for card selection
+        this.sceneManager.setupMouseEvents((card) => {
             this.handleCardSelection(card);
-        };
+        });
     }
-    
+
+    handleCardSelection(card) {
+        if (!card) return;
+        
+        console.log("Card selected:", card);
+        this.selectedCard = card;
+        
+        // Update UI to show card is selected
+        if (this.uiManager) {
+            this.uiManager.updateStatus("Card selected. Use quantum controls to manipulate it.");
+        }
+    }
+
+    setGameType(type) {
+        this.gameType = type;
+        this.gameState = type === 'blackjack' ? GameState.BETTING : GameState.POKER_BETTING;
+    }
+
+    async startNewGame() {
+        if (this.gameType === 'blackjack') {
+            await this.blackjackGame.startNewGame();
+        } else if (this.gameType === 'poker') {
+            await this.pokerGame.startNewGame();
+        }
+    }
+
+    // Blackjack controls
+    async playerHit() {
+        if (this.gameType === 'blackjack' && this.gameState === GameState.PLAYER_TURN) {
+            await this.blackjackGame.playerHit();
+        }
+    }
+
+    async playerStand() {
+        if (this.gameType === 'blackjack' && this.gameState === GameState.PLAYER_TURN) {
+            await this.blackjackGame.playerStand();
+        }
+    }
+
+    async playerDouble() {
+        if (this.gameType === 'blackjack' && this.gameState === GameState.PLAYER_TURN) {
+            await this.blackjackGame.playerDouble();
+        }
+    }
+
+    async playerSplit() {
+        if (this.gameType === 'blackjack' && this.gameState === GameState.PLAYER_TURN) {
+            await this.blackjackGame.playerSplit();
+        }
+    }
+
+    // Quantum mechanics
+    applySuperposition(card) {
+        if (!card) return;
+        card.putInSuperposition();
+        this.updateUI();
+    }
+
+    applyEntanglement(card1, card2) {
+        if (!card1 || !card2) return;
+        card1.entangleWith(card2);
+        this.sceneManager.createEntanglementLine(card1, card2);
+        this.updateUI();
+    }
+
+    measureCard(card) {
+        if (!card) return;
+        card.collapse();
+        this.sceneManager.removeEntanglementLine();
+        this.updateUI();
+    }
+
+    // UI updates
+    updateUI() {
+        if (this.uiManager) {
+            if (this.gameType === 'blackjack') {
+                this.uiManager.updateHandValues(
+                    this.blackjackGame.getPlayerHandValue(),
+                    this.blackjackGame.getDealerHandValue()
+                );
+            }
+            
+            // Update quantum counts
+            const superposedCards = this.countSuperposedCards();
+            const entangledCards = this.countEntangledCards();
+            this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
+        }
+    }
+
+    countSuperposedCards() {
+        let count = 0;
+        if (this.gameType === 'blackjack') {
+            [...this.blackjackGame.playerCards, ...this.blackjackGame.dealerCards].forEach(card => {
+                if (card.isInSuperposition()) count++;
+            });
+        }
+        return count;
+    }
+
+    countEntangledCards() {
+        let count = 0;
+        if (this.gameType === 'blackjack') {
+            [...this.blackjackGame.playerCards, ...this.blackjackGame.dealerCards].forEach(card => {
+                if (card.isEntangled()) count++;
+            });
+        }
+        return count;
+    }
+
     // Add a method to safely set the UI manager
     setUIManager(uiManager) {
         this.uiManager = uiManager;
