@@ -78,6 +78,9 @@ class QuantumBlackJack {
             window.addEventListener('resize', () => this.onWindowResize());
             document.addEventListener('visibilitychange', () => this.onVisibilityChange());
             
+            // Enable game selection buttons after initialization
+            this.uiManager.enableGameSelection();
+            
             console.log("Game initialization complete");
         } catch (error) {
             console.error("Error in init:", error);

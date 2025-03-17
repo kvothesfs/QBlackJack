@@ -16,10 +16,12 @@ export class UIManager {
         const blackjackBtn = document.createElement('button');
         blackjackBtn.textContent = 'Quantum Blackjack';
         blackjackBtn.className = 'game-btn';
+        blackjackBtn.disabled = true; // Initially disabled
         
         const pokerBtn = document.createElement('button');
         pokerBtn.textContent = 'Quantum Texas Hold Em';
         pokerBtn.className = 'game-btn';
+        pokerBtn.disabled = true; // Initially disabled
         
         gameSelection.appendChild(blackjackBtn);
         gameSelection.appendChild(pokerBtn);
@@ -112,8 +114,11 @@ export class UIManager {
 
     setupEventListeners() {
         // Game selection
-        document.querySelector('#game-selection .game-btn:nth-child(1)').addEventListener('click', () => this.selectGame('blackjack'));
-        document.querySelector('#game-selection .game-btn:nth-child(2)').addEventListener('click', () => this.selectGame('poker'));
+        const blackjackBtn = document.querySelector('#game-selection .game-btn:nth-child(1)');
+        const pokerBtn = document.querySelector('#game-selection .game-btn:nth-child(2)');
+        
+        blackjackBtn.addEventListener('click', () => this.selectGame('blackjack'));
+        pokerBtn.addEventListener('click', () => this.selectGame('poker'));
         
         // Blackjack controls
         document.getElementById('hit-btn').addEventListener('click', () => this.gameManager.playerHit());
@@ -137,6 +142,11 @@ export class UIManager {
     }
 
     selectGame(gameType) {
+        if (!this.gameManager.isInitialized) {
+            console.error("Game not initialized yet. Please wait.");
+            return;
+        }
+
         // Hide game selection
         document.getElementById('game-selection').style.display = 'none';
         
@@ -148,6 +158,12 @@ export class UIManager {
         
         // Update UI for game type
         this.updateUIForGameType(gameType);
+    }
+
+    // Add method to enable game selection buttons
+    enableGameSelection() {
+        const buttons = document.querySelectorAll('#game-selection .game-btn');
+        buttons.forEach(button => button.disabled = false);
     }
 
     updateUIForGameType(gameType) {

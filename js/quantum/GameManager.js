@@ -28,6 +28,7 @@ export class GameManager extends EventEmitter {
         this.selectedCard = null;
         this.entanglementTarget = null;
         this.tutorialShown = false;
+        this.isInitialized = false;
         
         // Initialize game instances
         this.blackjackGame = new BlackjackGame(this);
@@ -38,6 +39,7 @@ export class GameManager extends EventEmitter {
         this.sceneManager = sceneManager;
         this.assetLoader = assetLoader;
         this.uiManager = uiManager;
+        this.isInitialized = true;
         
         // Set up mouse events for card selection
         this.sceneManager.setupMouseEvents((card) => {
@@ -58,6 +60,11 @@ export class GameManager extends EventEmitter {
     }
 
     setGameType(type) {
+        if (!this.isInitialized) {
+            console.error("GameManager not initialized. Please wait for initialization to complete.");
+            return;
+        }
+
         this.gameType = type;
         this.gameState = type === 'blackjack' ? GameState.BETTING : GameState.POKER_BETTING;
         
@@ -77,6 +84,8 @@ export class GameManager extends EventEmitter {
                 this.gameState = GameState.WAITING;
                 this.showTutorial('poker');
             }
+        } else {
+            console.error("SceneManager not initialized. Cannot set game type.");
         }
     }
 
