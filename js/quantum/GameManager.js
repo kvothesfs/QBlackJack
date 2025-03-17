@@ -2,6 +2,7 @@ import { EventEmitter } from '../utils/EventEmitter.js';
 import { QuantumCard } from './QuantumCard.js';
 import { CardState } from './CardState.js';
 import * as THREE from 'three';
+import { TexasHoldEm } from './TexasHoldEm.js';
 
 // Game states
 export const GameState = {
@@ -63,6 +64,9 @@ export class GameManager extends EventEmitter {
         
         // Last game timestamp for update
         this.lastTime = performance.now();
+        
+        this.gameType = 'blackjack'; // or 'poker'
+        this.pokerGame = null;
     }
     
     // Add a method to safely set the UI manager
@@ -975,5 +979,88 @@ export class GameManager extends EventEmitter {
                 this.uiManager.showTie();
             }
         }
+    }
+
+    initializeGame() {
+        if (this.gameType === 'blackjack') {
+            this.gameState = 'initial';
+            this.playerCards = [];
+            this.dealerCards = [];
+            this.deck = [];
+            this.initializeDeck();
+        } else {
+            this.pokerGame = new TexasHoldEm(this.assetLoader);
+            this.gameState = 'poker_initial';
+        }
+    }
+
+    setGameType(type) {
+        this.gameType = type;
+        this.initializeGame();
+    }
+
+    // New Poker methods
+    pokerPlaceBet(amount) {
+        if (this.gameType === 'poker' && this.gameState === 'poker_betting') {
+            return this.pokerGame.placeBet(amount);
+        }
+        return false;
+    }
+
+    pokerCall() {
+        if (this.gameType === 'poker' && this.gameState === 'poker_betting') {
+            return this.pokerGame.call();
+        }
+        return false;
+    }
+
+    pokerRaise(amount) {
+        if (this.gameType === 'poker' && this.gameState === 'poker_betting') {
+            return this.pokerGame.raise(amount);
+        }
+        return false;
+    }
+
+    pokerFold() {
+        if (this.gameType === 'poker' && this.gameState === 'poker_betting') {
+            return this.pokerGame.fold();
+        }
+        return false;
+    }
+
+    pokerDealFlop() {
+        if (this.gameType === 'poker' && this.gameState === 'poker_betting') {
+            this.pokerGame.dealFlop();
+            this.gameState = 'poker_flop';
+            return true;
+        }
+        return false;
+    }
+
+    pokerDealTurn() {
+        if (this.gameType === 'poker' && this.gameState === 'poker_flop') {
+            this.pokerGame.dealTurn();
+            this.gameState = 'poker_turn';
+            return true;
+        }
+        return false;
+    }
+
+    pokerDealRiver() {
+        if (this.gameType === 'poker' && this.gameState === 'poker_turn') {
+            this.pokerGame.dealRiver();
+            this.gameState = 'poker_river';
+            return true;
+        }
+        return false;
+    }
+
+    pokerShowdown() {
+        if (this.gameType === 'poker' && this.gameState === 'poker_river') {
+            const winner = this.pokerGame.determineWinner();
+            this.gameState = 'poker_showdown';
+            return winner;
+        }
+        return null;
     }
 } 

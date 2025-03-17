@@ -41,18 +41,46 @@ export class QuantumCard {
     createMesh() {
         // Create a larger card for better visibility
         const cardGeometry = new THREE.BoxGeometry(2.8, 0.01, 4);
+        
+        // Get the texture or generate a fallback
+        let frontTexture;
+        try {
+            frontTexture = this.assetLoader.getTexture(`card_${this.state1.value}_of_${this.state1.suit}`);
+            // If texture is undefined, generate a procedural one
+            if (!frontTexture) {
+                console.log(`Creating procedural texture for ${this.state1.value} of ${this.state1.suit}`);
+                frontTexture = this.createCardTexture(this.state1);
+            }
+        } catch (error) {
+            console.warn("Error loading card texture:", error);
+            frontTexture = this.createCardTexture(this.state1);
+        }
+        
         const cardMaterial = new THREE.MeshStandardMaterial({
             color: 0xffffff,
             roughness: 0.3,
             metalness: 0.7,
-            map: this.assetLoader.getTexture(`card_${this.state1.value}_of_${this.state1.suit}`)
+            map: frontTexture
         });
+        
+        // Get or generate back texture
+        let backTexture;
+        try {
+            backTexture = this.assetLoader.getTexture('cardBack');
+            if (!backTexture) {
+                console.log("Creating procedural card back texture");
+                backTexture = this.createCardBackTexture();
+            }
+        } catch (error) {
+            console.warn("Error loading card back texture:", error);
+            backTexture = this.createCardBackTexture();
+        }
         
         const backMaterial = new THREE.MeshStandardMaterial({
             color: 0xffffff,
             roughness: 0.3,
             metalness: 0.7,
-            map: this.assetLoader.getTexture('cardBack')
+            map: backTexture
         });
         
         // Create materials array with front and back textures
@@ -83,6 +111,8 @@ export class QuantumCard {
         
         // Add userData for raycasting
         this.mesh.userData.card = this;
+        
+        console.log(`Created card mesh for ${this.state1.value} of ${this.state1.suit}`);
     }
     
     addNeonEdges() {
@@ -454,5 +484,103 @@ export class QuantumCard {
         this.isFaceUp = true;
         // Just call the existing flipToFront method
         return this.flipToFront();
+    }
+
+    createCardTexture(cardState) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 720;
+        const ctx = canvas.getContext('2d');
+        
+        // Card background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Card border
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+        
+        // Card suit and value
+        ctx.font = 'bold 120px Arial';
+        ctx.textAlign = 'center';
+        
+        // Set color based on suit
+        if (cardState.suit === 'hearts' || cardState.suit === 'diamonds') {
+            ctx.fillStyle = '#ff0000'; // Red
+        } else {
+            ctx.fillStyle = '#000000'; // Black
+        }
+        
+        // Draw value
+        let valueText = cardState.value;
+        if (valueText === 'ace') valueText = 'A';
+        else if (valueText === 'king') valueText = 'K';
+        else if (valueText === 'queen') valueText = 'Q';
+        else if (valueText === 'jack') valueText = 'J';
+        
+        ctx.fillText(valueText.toUpperCase(), canvas.width / 2, 150);
+        
+        // Draw suit
+        let suitSymbol = '♠'; // Default spades
+        if (cardState.suit === 'hearts') suitSymbol = '♥';
+        else if (cardState.suit === 'diamonds') suitSymbol = '♦';
+        else if (cardState.suit === 'clubs') suitSymbol = '♣';
+        
+        ctx.font = 'bold 240px Arial';
+        ctx.fillText(suitSymbol, canvas.width / 2, canvas.height / 2 + 50);
+        
+        // Create texture from canvas
+        const texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
+
+    createCardBackTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 720;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill with gradient background
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#4B0082'); // Indigo
+        gradient.addColorStop(0.5, '#9400D3'); // Violet
+        gradient.addColorStop(1, '#00CED1'); // Turquoise
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add grid pattern
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2;
+        const gridSize = 40;
+        
+        // Horizontal grid lines
+        for (let y = 0; y < canvas.height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        
+        // Vertical grid lines
+        for (let x = 0; x < canvas.width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        
+        // Add text
+        ctx.font = 'bold 60px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#00FFFF'; // Cyan
+        ctx.fillText('QUANTUM', canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillText('BLACKJACK', canvas.width / 2, canvas.height / 2 + 60);
+        
+        // Create texture from canvas
+        const texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+        return texture;
     }
 } 

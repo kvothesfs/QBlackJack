@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantum Black Jack</title>
+    <title>Quantum Card Games</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
@@ -17,35 +17,69 @@
     </script>
 </head>
 <body>
-    <canvas id="game-canvas"></canvas>
-    
+    <!-- Loading Screen -->
     <div id="loading-screen">
-        <h1 class="loading-title">QUANTUM BLACK JACK</h1>
-        <div class="loading-bar-container">
-            <div class="loading-bar" id="loading-bar"></div>
-        </div>
-        <div class="loading-text" id="loading-text">Loading assets: 0%</div>
-        <button id="start-game-btn" class="start-button" style="display: none;">START GAME</button>
-    </div>
-    
-    <div id="ui-container" class="ui-container" style="display: none;">
-        <button id="hit-btn" class="button">Hit</button>
-        <button id="stand-btn" class="button">Stand</button>
-        <button id="superposition-btn" class="button">Superposition</button>
-        <button id="entanglement-btn" class="button">Entangle</button>
-        <button id="measure-btn" class="button">Measure</button>
-        <button id="new-game-btn" class="button">New Game</button>
-    </div>
-    
-    <div id="status-display" class="status-display" style="display: none;">
-        <div>Your Hand: <span id="player-value" class="hand-value">0</span></div>
-        <div>Dealer Hand: <span id="dealer-value" class="hand-value">0</span></div>
-        <div class="quantum-info">
-            <div>Superpositions: <span id="superposition-count">0</span></div>
-            <div>Entanglements: <span id="entanglement-count">0</span></div>
+        <div class="loading-content">
+            <h1>Quantum Card Games</h1>
+            <div class="loading-bar-container">
+                <div id="loading-bar"></div>
+            </div>
+            <p id="loading-text">Loading assets: 0%</p>
+            <button id="start-game-btn" class="start-button">Start Game</button>
         </div>
     </div>
-    
+
+    <!-- Game Selection -->
+    <div id="game-selection" class="game-selection">
+        <h2>Select a Game</h2>
+        <div class="game-buttons">
+            <button id="blackjack-btn" class="game-button">Quantum Blackjack</button>
+            <button id="poker-btn" class="game-button">Quantum Texas Hold Em</button>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="game-container">
+        <!-- Canvas for 3D rendering -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- UI Container -->
+        <div id="ui-container">
+            <!-- Status Display -->
+            <div id="status-display"></div>
+
+            <!-- Blackjack Controls -->
+            <div id="blackjack-controls" class="game-controls">
+                <button id="hit-btn" class="game-button">Hit</button>
+                <button id="stand-btn" class="game-button">Stand</button>
+                <button id="new-game-btn" class="game-button">New Game</button>
+                <button id="superposition-btn" class="game-button">Superposition</button>
+                <button id="entanglement-btn" class="game-button">Entangle</button>
+                <button id="measure-btn" class="game-button">Measure</button>
+            </div>
+
+            <!-- Poker Controls -->
+            <div id="poker-controls" class="game-controls">
+                <button id="bet-btn" class="game-button">Bet</button>
+                <button id="call-btn" class="game-button">Call</button>
+                <button id="raise-btn" class="game-button">Raise</button>
+                <button id="fold-btn" class="game-button">Fold</button>
+                <button id="deal-flop-btn" class="game-button">Deal Flop</button>
+                <button id="deal-turn-btn" class="game-button">Deal Turn</button>
+                <button id="deal-river-btn" class="game-button">Deal River</button>
+                <button id="showdown-btn" class="game-button">Showdown</button>
+            </div>
+
+            <!-- Game Info -->
+            <div id="game-info">
+                <div id="player-value"></div>
+                <div id="dealer-value"></div>
+                <div id="pot-amount"></div>
+                <div id="player-chips"></div>
+            </div>
+        </div>
+    </div>
+
     <button id="sound-toggle" class="sound-toggle">
         <span class="sound-icon">🔊</span>
     </button>

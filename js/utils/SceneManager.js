@@ -285,22 +285,40 @@ export class SceneManager {
     }
 
     setupMouseEvents(onObjectClick) {
+        this.onObjectClick = onObjectClick; // Store the callback
+        
+        // Add click event listener
         this.container.addEventListener('click', (event) => {
             // Calculate mouse position in normalized device coordinates
             const rect = this.renderer.domElement.getBoundingClientRect();
             this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
             
+            console.log("Mouse click at:", this.mouse.x, this.mouse.y);
+            console.log("Interactive objects:", this.interactiveObjects.length);
+            
             // Update the picking ray with the camera and mouse position
             this.raycaster.setFromCamera(this.mouse, this.camera);
             
             // Calculate objects intersecting the picking ray
-            const intersects = this.raycaster.intersectObjects(this.interactiveObjects);
+            const intersects = this.raycaster.intersectObjects(this.interactiveObjects, true);
+            console.log("Intersections:", intersects.length);
             
             if (intersects.length > 0) {
                 const object = intersects[0].object;
-                if (onObjectClick && object.userData.card) {
-                    onObjectClick(object.userData.card);
+                console.log("Clicked on object:", object);
+                
+                // Find the card associated with this object
+                let card = null;
+                if (object.userData.card) {
+                    card = object.userData.card;
+                } else if (object.parent && object.parent.userData.card) {
+                    card = object.parent.userData.card;
+                }
+                
+                if (card && this.onObjectClick) {
+                    console.log("Card selected:", card);
+                    this.onObjectClick(card);
                 }
             }
         });

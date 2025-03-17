@@ -746,4 +746,205 @@ body {
     100% {
         box-shadow: 0 0 20px var(--primary-color), 0 0 30px var(--secondary-color);
     }
+}
+
+/* Game Selection */
+.game-selection {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 2rem;
+    border-radius: 1rem;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+}
+
+.game-selection h2 {
+    color: #00ffff;
+    font-family: 'VT323', monospace;
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.game-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Game Container */
+#game-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+}
+
+#game-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* UI Container */
+#ui-container {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Game Controls */
+.game-controls {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+}
+
+.game-button {
+    background: linear-gradient(45deg, #4B0082, #9400D3);
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    padding: 0.8rem 1.5rem;
+    font-family: 'VT323', monospace;
+    font-size: 1.2rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    transition: all 0.3s ease;
+    border-radius: 0.3rem;
+}
+
+.game-button:hover {
+    background: linear-gradient(45deg, #9400D3, #4B0082);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+}
+
+/* Game Info */
+#game-info {
+    display: flex;
+    gap: 2rem;
+    color: #00ffff;
+    font-family: 'VT323', monospace;
+    font-size: 1.5rem;
+    text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #00ffff;
+}
+
+/* Status Display */
+#status-display {
+    color: #00ffff;
+    font-family: 'VT323', monospace;
+    font-size: 1.5rem;
+    text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #00ffff;
+    margin-bottom: 1rem;
+}
+
+/* Loading Screen */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loading-content {
+    text-align: center;
+    color: #00ffff;
+    font-family: 'VT323', monospace;
+}
+
+.loading-content h1 {
+    font-size: 3rem;
+    margin-bottom: 2rem;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.loading-bar-container {
+    width: 300px;
+    height: 20px;
+    background: rgba(0, 255, 255, 0.1);
+    border: 2px solid #00ffff;
+    border-radius: 10px;
+    margin: 2rem auto;
+    overflow: hidden;
+}
+
+#loading-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #4B0082, #9400D3);
+    transition: width 0.3s ease;
+}
+
+#loading-text {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.start-button {
+    background: linear-gradient(45deg, #4B0082, #9400D3);
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    padding: 1rem 2rem;
+    font-family: 'VT323', monospace;
+    font-size: 1.5rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    transition: all 0.3s ease;
+    border-radius: 0.5rem;
+    animation: pulse-glow 1.5s infinite alternate;
+}
+
+.start-button:hover {
+    background: linear-gradient(45deg, #9400D3, #4B0082);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+}
+
+@keyframes pulse-glow {
+    from {
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+    }
+    to {
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+    }
 } 

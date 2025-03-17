@@ -1,392 +1,201 @@
 import { GameState } from '../quantum/GameManager.js';
 
 export class UIManager {
-    constructor(gameManager, soundManager) {
+    constructor(gameManager) {
         this.gameManager = gameManager;
-        this.soundManager = soundManager;
-        
-        // UI Elements
-        this.hitButton = document.getElementById('hit-btn');
-        this.standButton = document.getElementById('stand-btn');
-        this.superpositionButton = document.getElementById('superposition-btn');
-        this.entanglementButton = document.getElementById('entanglement-btn');
-        this.measureButton = document.getElementById('measure-btn');
-        this.newGameButton = document.getElementById('new-game-btn');
-        
-        // Status display
-        this.statusDisplay = document.getElementById('status-display');
-        this.playerValueElement = document.getElementById('player-value');
-        this.dealerValueElement = document.getElementById('dealer-value');
-        this.superpositionCountElement = document.getElementById('superposition-count');
-        this.entanglementCountElement = document.getElementById('entanglement-count');
-        
-        // Result overlay
-        this.resultOverlay = document.getElementById('result-overlay');
-        this.resultMessage = document.getElementById('result-message');
-        
-        // Sound toggle button
-        this.soundToggle = document.getElementById('sound-toggle');
-        this.soundIcon = this.soundToggle ? this.soundToggle.querySelector('.sound-icon') : null;
-        
-        // UI Container
-        this.uiContainer = document.getElementById('ui-container');
-        
-        // Loading screen
-        this.loadingScreen = document.getElementById('loading-screen');
-        this.loadingBar = document.getElementById('loading-bar');
-        this.loadingText = document.getElementById('loading-text');
-        
-        // Tutorial dialog
-        this.tutorialOverlay = document.getElementById('tutorial-overlay');
-        this.tutorialContent = document.getElementById('tutorial-content');
-        this.tutorialNextBtn = document.getElementById('tutorial-next-btn');
-        
-        // Start button
-        this.startButton = document.getElementById('start-game-btn');
-        
-        // Initialize UI
-        this.initUI();
-    }
-    
-    initUI() {
-        // Set up event listeners
+        this.setupUI();
         this.setupEventListeners();
-        
-        // Add visual effects to buttons
-        this.addButtonEffects();
     }
-    
+
+    setupUI() {
+        // Game selection buttons
+        this.blackjackBtn = document.getElementById('blackjack-btn');
+        this.pokerBtn = document.getElementById('poker-btn');
+        
+        // Blackjack UI elements
+        this.hitBtn = document.getElementById('hit-btn');
+        this.standBtn = document.getElementById('stand-btn');
+        this.newGameBtn = document.getElementById('new-game-btn');
+        this.superpositionBtn = document.getElementById('superposition-btn');
+        this.entanglementBtn = document.getElementById('entanglement-btn');
+        this.measureBtn = document.getElementById('measure-btn');
+        
+        // Poker UI elements
+        this.betBtn = document.getElementById('bet-btn');
+        this.callBtn = document.getElementById('call-btn');
+        this.raiseBtn = document.getElementById('raise-btn');
+        this.foldBtn = document.getElementById('fold-btn');
+        this.dealFlopBtn = document.getElementById('deal-flop-btn');
+        this.dealTurnBtn = document.getElementById('deal-turn-btn');
+        this.dealRiverBtn = document.getElementById('deal-river-btn');
+        this.showdownBtn = document.getElementById('showdown-btn');
+        
+        // Common UI elements
+        this.gameContainer = document.getElementById('game-container');
+        this.loadingScreen = document.getElementById('loading-screen');
+        this.startGameBtn = document.getElementById('start-game-btn');
+        this.statusDisplay = document.getElementById('status-display');
+    }
+
     setupEventListeners() {
-        // Game action buttons
-        if (this.hitButton) {
-            this.hitButton.addEventListener('click', () => this.onHitClick());
+        // Game selection
+        if (this.blackjackBtn) {
+            this.blackjackBtn.addEventListener('click', () => {
+                this.gameManager.setGameType('blackjack');
+                this.updateUIForGameType('blackjack');
+            });
         }
         
-        if (this.standButton) {
-            this.standButton.addEventListener('click', () => this.onStandClick());
+        if (this.pokerBtn) {
+            this.pokerBtn.addEventListener('click', () => {
+                this.gameManager.setGameType('poker');
+                this.updateUIForGameType('poker');
+            });
         }
         
-        if (this.superpositionButton) {
-            this.superpositionButton.addEventListener('click', () => this.onSuperpositionClick());
+        // Blackjack controls
+        if (this.hitBtn) {
+            this.hitBtn.addEventListener('click', () => this.gameManager.playerHit());
         }
         
-        if (this.entanglementButton) {
-            this.entanglementButton.addEventListener('click', () => this.onEntanglementClick());
+        if (this.standBtn) {
+            this.standBtn.addEventListener('click', () => this.gameManager.playerStand());
         }
         
-        if (this.measureButton) {
-            this.measureButton.addEventListener('click', () => this.onMeasureClick());
+        if (this.newGameBtn) {
+            this.newGameBtn.addEventListener('click', () => this.gameManager.startNewGame());
         }
         
-        if (this.newGameButton) {
-            this.newGameButton.addEventListener('click', () => this.onNewGameClick());
+        // Quantum controls
+        if (this.superpositionBtn) {
+            this.superpositionBtn.addEventListener('click', () => {
+                if (this.gameManager.selectedCard) {
+                    this.gameManager.applySuperposition(this.gameManager.selectedCard);
+                }
+            });
         }
         
-        // Sound toggle
-        if (this.soundToggle) {
-            this.soundToggle.addEventListener('click', () => this.toggleSound());
+        if (this.entanglementBtn) {
+            this.entanglementBtn.addEventListener('click', () => {
+                if (this.gameManager.selectedCard) {
+                    if (!this.gameManager.entanglementTarget) {
+                        this.gameManager.entanglementTarget = this.gameManager.selectedCard;
+                        this.updateStatus("Select another card to entangle with");
+                    } else {
+                        this.gameManager.applyEntanglement(
+                            this.gameManager.entanglementTarget,
+                            this.gameManager.selectedCard
+                        );
+                        this.gameManager.entanglementTarget = null;
+                        this.updateStatus("");
+                    }
+                }
+            });
         }
         
-        // Tutorial next button
-        if (this.tutorialNextBtn) {
-            this.tutorialNextBtn.addEventListener('click', () => this.nextTutorialStep());
+        if (this.measureBtn) {
+            this.measureBtn.addEventListener('click', () => {
+                if (this.gameManager.selectedCard) {
+                    this.gameManager.measureCard(this.gameManager.selectedCard);
+                }
+            });
         }
         
-        // Start button
-        if (this.startButton) {
-            this.startButton.addEventListener('click', () => this.onStartGameClick());
+        // Poker controls
+        if (this.betBtn) {
+            this.betBtn.addEventListener('click', () => {
+                const amount = parseInt(prompt("Enter bet amount:"));
+                if (!isNaN(amount)) {
+                    this.gameManager.pokerPlaceBet(amount);
+                }
+            });
+        }
+        
+        if (this.callBtn) {
+            this.callBtn.addEventListener('click', () => this.gameManager.pokerCall());
+        }
+        
+        if (this.raiseBtn) {
+            this.raiseBtn.addEventListener('click', () => {
+                const amount = parseInt(prompt("Enter raise amount:"));
+                if (!isNaN(amount)) {
+                    this.gameManager.pokerRaise(amount);
+                }
+            });
+        }
+        
+        if (this.foldBtn) {
+            this.foldBtn.addEventListener('click', () => this.gameManager.pokerFold());
+        }
+        
+        if (this.dealFlopBtn) {
+            this.dealFlopBtn.addEventListener('click', () => this.gameManager.pokerDealFlop());
+        }
+        
+        if (this.dealTurnBtn) {
+            this.dealTurnBtn.addEventListener('click', () => this.gameManager.pokerDealTurn());
+        }
+        
+        if (this.dealRiverBtn) {
+            this.dealRiverBtn.addEventListener('click', () => this.gameManager.pokerDealRiver());
+        }
+        
+        if (this.showdownBtn) {
+            this.showdownBtn.addEventListener('click', () => {
+                const winner = this.gameManager.pokerShowdown();
+                this.updateStatus(`Winner: ${winner}`);
+            });
+        }
+        
+        // Start game button
+        if (this.startGameBtn) {
+            this.startGameBtn.addEventListener('click', () => {
+                this.hideLoadingScreen();
+                this.showGameUI();
+                this.gameManager.startNewGame();
+            });
         }
     }
-    
-    // Click handlers
-    onHitClick() {
-        if (this.gameManager) {
-            this.gameManager.playerHit();
-        }
-    }
-    
-    onStandClick() {
-        if (this.gameManager) {
-            this.gameManager.playerStand();
-        }
-    }
-    
-    onSuperpositionClick() {
-        if (this.gameManager) {
-            this.gameManager.applySuperposition();
-        }
-    }
-    
-    onEntanglementClick() {
-        if (this.gameManager) {
-            this.gameManager.applyEntanglement();
-        }
-    }
-    
-    onMeasureClick() {
-        if (this.gameManager) {
-            this.gameManager.measureCard();
-        }
-    }
-    
-    onNewGameClick() {
-        if (this.gameManager) {
-            this.gameManager.startNewGame();
-        }
-    }
-    
-    onStartGameClick() {
-        console.log("Start button clicked");
+
+    updateUIForGameType(gameType) {
+        // Hide all game-specific UI elements
+        const blackjackElements = [
+            this.hitBtn, this.standBtn, this.newGameBtn,
+            this.superpositionBtn, this.entanglementBtn, this.measureBtn
+        ];
         
-        // Hide loading screen and show game UI
+        const pokerElements = [
+            this.betBtn, this.callBtn, this.raiseBtn, this.foldBtn,
+            this.dealFlopBtn, this.dealTurnBtn, this.dealRiverBtn, this.showdownBtn
+        ];
+        
+        blackjackElements.forEach(el => {
+            if (el) el.style.display = gameType === 'blackjack' ? 'block' : 'none';
+        });
+        
+        pokerElements.forEach(el => {
+            if (el) el.style.display = gameType === 'poker' ? 'block' : 'none';
+        });
+        
+        // Update status display
+        this.updateStatus(`Game type: ${gameType}`);
+    }
+
+    updateStatus(message) {
+        if (this.statusDisplay) {
+            this.statusDisplay.textContent = message;
+        }
+    }
+
+    hideLoadingScreen() {
         if (this.loadingScreen) {
             this.loadingScreen.style.display = 'none';
         }
-        
-        if (this.uiContainer) {
-            this.uiContainer.style.display = 'flex';
-        }
-        
-        if (this.statusDisplay) {
-            this.statusDisplay.style.display = 'block';
-        }
-        
-        // Initialize and start audio (user interaction allows audio to play)
-        if (this.soundManager) {
-            // Initialize audio since this is a user interaction
-            this.soundManager.initAudio();
-            
-            // Make sure the audio context is resumed
-            this.soundManager.resumeAudioContext();
-            
-            // Start background music with a slight delay to ensure context is ready
-            setTimeout(() => {
-                this.soundManager.startBackgroundMusic();
-                console.log("Background music started");
-            }, 100);
-        }
-        
-        // Show tutorial
-        this.showTutorial();
     }
-    
-    // ... Keep the existing methods ...
-    
-    addButtonEffects() {
-        const buttons = document.querySelectorAll('.button');
-        
-        buttons.forEach(button => {
-            button.addEventListener('mouseover', () => {
-                if (this.soundManager) {
-                    this.soundManager.playProceduralSound('hover', 0.1);
-                }
-            });
-            
-            button.addEventListener('click', () => {
-                if (this.soundManager) {
-                    this.soundManager.playProceduralSound('click', 0.2);
-                }
-            });
-        });
-    }
-    
-    toggleSound() {
-        if (this.soundManager) {
-            this.soundManager.toggleMute();
-            
-            // Update icon
-            if (this.soundIcon) {
-                if (this.soundManager.soundEnabled) {
-                    this.soundIcon.textContent = '🔊';
-                } else {
-                    this.soundIcon.textContent = '🔇';
-                }
-            }
-        }
-    }
-    
-    updateLoadingProgress(progress) {
-        // Update loading bar width
-        if (this.loadingBar) {
-            this.loadingBar.style.width = `${progress}%`;
-        }
-        
-        // Update loading text
-        if (this.loadingText) {
-            this.loadingText.textContent = `Loading assets: ${Math.round(progress)}%`;
-        }
-        
-        // If loading is complete, show the start button
-        if (progress >= 100) {
-            setTimeout(() => {
-                if (this.loadingText) {
-                    this.loadingText.textContent = 'Loading complete!';
-                }
-                
-                if (this.startButton) {
-                    this.startButton.style.display = 'block';
-                }
-            }, 500);
-        }
-    }
-    
-    updateHandValues(playerValue, dealerValue) {
-        if (this.playerValueElement) {
-            this.playerValueElement.textContent = playerValue;
-        }
-        
-        if (this.dealerValueElement) {
-            this.dealerValueElement.textContent = dealerValue;
-        }
-    }
-    
-    updateQuantumCounts(superpositionCount, entanglementCount) {
-        if (this.superpositionCountElement) {
-            this.superpositionCountElement.textContent = superpositionCount;
-        }
-        
-        if (this.entanglementCountElement) {
-            this.entanglementCountElement.textContent = entanglementCount;
-        }
-    }
-    
-    showWin() {
-        if (this.resultMessage) {
-            this.resultMessage.textContent = 'YOU WIN';
-            this.resultMessage.className = 'result-message win-message';
-        }
-        
-        if (this.resultOverlay) {
-            this.resultOverlay.classList.add('show');
-        }
-        
-        // Play win sound
-        if (this.soundManager) {
-            this.soundManager.playWinSound();
-        }
-        
-        setTimeout(() => {
-            if (this.resultOverlay) {
-                this.resultOverlay.classList.remove('show');
-            }
-        }, 3000);
-    }
-    
-    showLose() {
-        if (this.resultMessage) {
-            this.resultMessage.textContent = 'YOU LOSE';
-            this.resultMessage.className = 'result-message lose-message';
-        }
-        
-        if (this.resultOverlay) {
-            this.resultOverlay.classList.add('show');
-        }
-        
-        // Play lose sound
-        if (this.soundManager) {
-            this.soundManager.playLoseSound();
-        }
-        
-        setTimeout(() => {
-            if (this.resultOverlay) {
-                this.resultOverlay.classList.remove('show');
-            }
-        }, 3000);
-    }
-    
-    showTie() {
-        if (this.resultMessage) {
-            this.resultMessage.textContent = 'TIE GAME';
-            this.resultMessage.className = 'result-message win-message';
-        }
-        
-        if (this.resultOverlay) {
-            this.resultOverlay.classList.add('show');
-        }
-        
-        // Play tie sound
-        if (this.soundManager) {
-            this.soundManager.playCardPlaceSound();
-        }
-        
-        setTimeout(() => {
-            if (this.resultOverlay) {
-                this.resultOverlay.classList.remove('show');
-            }
-        }, 3000);
-    }
-    
-    // Tutorial methods
-    tutorialSteps = [
-        {
-            title: "Welcome to Quantum Black Jack!",
-            content: "This is a twist on traditional Black Jack that incorporates quantum mechanics. Get ready for an experience that's both familiar and mind-bending!"
-        },
-        {
-            title: "Traditional Rules",
-            content: "The goal is still to get as close to 21 as possible without going over. Face cards are worth 10, Aces are 11 or 1."
-        },
-        {
-            title: "Quantum Twist: Superposition",
-            content: "Cards can exist in superposition, meaning they're multiple values at once until measured. Use the Superposition button to put a card in this state."
-        },
-        {
-            title: "Quantum Twist: Entanglement",
-            content: "Two cards in superposition can be entangled. When one is measured, the other will be affected in a correlated way. Use the Entangle button to link two superposed cards."
-        },
-        {
-            title: "Quantum Twist: Measurement",
-            content: "When you're ready to collapse a card's superposition, use the Measure button. This will randomly determine which value it actually has."
-        },
-        {
-            title: "Ready to Play?",
-            content: "Click the New Game button to start. Good luck!"
-        }
-    ];
-    
-    currentTutorialStep = 0;
-    
-    showTutorial() {
-        if (this.tutorialOverlay) {
-            this.tutorialOverlay.style.display = 'flex';
-            this.updateTutorialContent();
-        }
-    }
-    
-    nextTutorialStep() {
-        this.currentTutorialStep++;
-        
-        if (this.currentTutorialStep >= this.tutorialSteps.length) {
-            // End of tutorial
-            if (this.tutorialOverlay) {
-                this.tutorialOverlay.style.display = 'none';
-            }
-            this.currentTutorialStep = 0;
-        } else {
-            this.updateTutorialContent();
-        }
-    }
-    
-    updateTutorialContent() {
-        const step = this.tutorialSteps[this.currentTutorialStep];
-        
-        // Update tutorial title and content
-        const tutorialTitle = this.tutorialOverlay ? 
-            this.tutorialOverlay.querySelector('.tutorial-title') : null;
-        
-        if (tutorialTitle) {
-            tutorialTitle.textContent = step.title;
-        }
-        
-        if (this.tutorialContent) {
-            this.tutorialContent.textContent = step.content;
-        }
-        
-        // Update button text for last step
-        if (this.tutorialNextBtn) {
-            this.tutorialNextBtn.textContent = 
-                this.currentTutorialStep === this.tutorialSteps.length - 1 ? 
-                'Start Playing' : 'Next';
+
+    showGameUI() {
+        if (this.gameContainer) {
+            this.gameContainer.style.display = 'block';
         }
     }
 } 
