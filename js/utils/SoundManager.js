@@ -6,8 +6,9 @@ export class SoundManager {
         this.sounds = {};
         this.soundEnabled = true;
         
-        // Create audio listener
-        this.listener = new THREE.AudioListener();
+        // Create audio listener but don't initialize the audio context yet
+        this.listener = null;
+        this.audioContext = null;
         
         // Volume settings
         this.masterVolume = 0.7;
@@ -18,11 +19,11 @@ export class SoundManager {
         this.sfx = {};
         this.music = {};
         
-        // Audio context (for procedural sounds)
-        this.audioContext = this.listener.context;
-        
         // Background music
         this.backgroundMusic = null;
+        
+        // Flag to track if audio has been initialized
+        this.isAudioInitialized = false;
         
         this.initSounds();
     }
@@ -32,11 +33,17 @@ export class SoundManager {
     }
 
     addListenerToCamera(camera) {
+        // Initialize audio first
+        if (!this.isAudioInitialized) {
+            this.initAudio();
+        }
+        
         if (camera && this.listener) {
             camera.add(this.listener);
             
-            // Start background music
-            this.startBackgroundMusic();
+            // Don't start background music automatically
+            // It will be started after user interaction
+            console.log("Audio listener added to camera");
         } else {
             console.error("Cannot add listener to camera: Camera or listener is undefined");
         }
@@ -110,8 +117,16 @@ export class SoundManager {
     }
 
     startBackgroundMusic() {
+        // Make sure audio is initialized
+        if (!this.isAudioInitialized) {
+            this.initAudio();
+        }
+        
         // Make sure audio context is running
         this.resumeAudioContext();
+        
+        // Don't start music if sound is disabled
+        if (!this.soundEnabled) return;
         
         // Create vaporwave style background music
         const musicSound = new THREE.Audio(this.listener);
@@ -295,6 +310,11 @@ export class SoundManager {
     playTone(frequency, duration, type = 'sine', volume = 0.5, fadeDuration = 0.1) {
         if (!this.soundEnabled) return null;
         
+        // Initialize audio if needed
+        if (!this.isAudioInitialized) {
+            this.initAudio();
+        }
+        
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
         
@@ -327,6 +347,11 @@ export class SoundManager {
 
     playSweep(startFreq, endFreq, duration, type = 'sine', volume = 0.5) {
         if (!this.soundEnabled) return null;
+        
+        // Initialize audio if needed
+        if (!this.isAudioInitialized) {
+            this.initAudio();
+        }
         
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -361,6 +386,11 @@ export class SoundManager {
 
     playNoise(duration, volume = 0.5) {
         if (!this.soundEnabled) return null;
+        
+        // Initialize audio if needed
+        if (!this.isAudioInitialized) {
+            this.initAudio();
+        }
         
         // Create buffer for white noise
         const bufferSize = this.audioContext.sampleRate * duration;
@@ -635,6 +665,11 @@ export class SoundManager {
         try {
             if (!this.soundEnabled) return null;
             
+            // Initialize audio if needed
+            if (!this.isAudioInitialized) {
+                this.initAudio();
+            }
+            
             // Create oscillator and gain nodes
             const oscillator = this.audioContext.createOscillator();
             const gainNode = this.audioContext.createGain();
@@ -770,6 +805,11 @@ export class SoundManager {
     }
 
     resumeAudioContext() {
+        // Initialize audio if not done already
+        if (!this.isAudioInitialized) {
+            this.initAudio();
+        }
+        
         // Resume the audio context after user interaction
         if (this.audioContext && this.audioContext.state === 'suspended') {
             try {
@@ -783,5 +823,16 @@ export class SoundManager {
                 console.error("Error resuming audio context:", error);
             }
         }
+    }
+
+    // Initialize the audio context and listener on user interaction
+    initAudio() {
+        if (this.isAudioInitialized) return;
+        
+        console.log("Initializing audio context on user interaction");
+        // Create the audio listener and context
+        this.listener = new THREE.AudioListener();
+        this.audioContext = this.listener.context;
+        this.isAudioInitialized = true;
     }
 } 

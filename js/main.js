@@ -71,8 +71,8 @@ class QuantumBlackJack {
             this.isInitialized = true;
             this.animate();
             
-            // Start game music
-            this.soundManager.startBackgroundMusic();
+            // Don't start background music until user interaction
+            // this.soundManager.startBackgroundMusic();
             
             // Set up event listeners for resize and visibility changes
             window.addEventListener('resize', () => this.onWindowResize());
@@ -94,6 +94,7 @@ class QuantumBlackJack {
                 let progress = 0;
                 const loadingBar = document.getElementById('loading-bar');
                 const loadingText = document.getElementById('loading-text');
+                const startButton = document.getElementById('start-game-btn');
                 
                 if (!loadingBar) {
                     console.warn("Loading bar element not found");
@@ -116,9 +117,24 @@ class QuantumBlackJack {
                         loadingText.textContent = `Loading assets: ${progress}%`;
                     }
                     
+                    // If the UIManager is initialized, use it to update loading progress
+                    if (this.uiManager) {
+                        this.uiManager.updateLoadingProgress(progress);
+                    }
+                    
                     if (progress >= 100) {
                         clearInterval(interval);
                         console.log("Loading progress complete");
+                        
+                        // Show the start button directly since UIManager might not be initialized yet
+                        if (loadingText) {
+                            loadingText.textContent = 'Loading complete!';
+                        }
+                        
+                        if (startButton) {
+                            startButton.style.display = 'block';
+                        }
+                        
                         setTimeout(resolve, 500); // Add a small delay after reaching 100%
                     }
                 }, 100);
