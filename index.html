@@ -4,28 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quantum Black Jack</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.159.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.159.0/examples/jsm/"
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
             }
         }
     </script>
 </head>
 <body>
+    <canvas id="game-canvas"></canvas>
+    
     <div id="loading-screen">
-        <div class="loading-content">
-            <h1>Quantum Black Jack</h1>
-            <p>Loading...</p>
-            <div class="progress-bar">
-                <div class="progress"></div>
-            </div>
+        <h1 class="loading-title">QUANTUM BLACK JACK</h1>
+        <div class="loading-bar-container">
+            <div class="loading-bar" id="loading-bar"></div>
+        </div>
+        <div class="loading-text" id="loading-text">Loading assets: 0%</div>
+    </div>
+    
+    <div id="ui-container" class="ui-container" style="display: none;">
+        <button id="hit-btn" class="button">Hit</button>
+        <button id="stand-btn" class="button">Stand</button>
+        <button id="superposition-btn" class="button">Superposition</button>
+        <button id="entanglement-btn" class="button">Entangle</button>
+        <button id="measure-btn" class="button">Measure</button>
+        <button id="new-game-btn" class="button">New Game</button>
+    </div>
+    
+    <div id="status-display" class="status-display" style="display: none;">
+        <div>Your Hand: <span id="player-value" class="hand-value">0</span></div>
+        <div>Dealer Hand: <span id="dealer-value" class="hand-value">0</span></div>
+        <div class="quantum-info">
+            <div>Superpositions: <span id="superposition-count">0</span></div>
+            <div>Entanglements: <span id="entanglement-count">0</span></div>
         </div>
     </div>
-
+    
+    <button id="sound-toggle" class="sound-toggle">
+        <span class="sound-icon">🔊</span>
+    </button>
+    
+    <div id="tutorial-overlay" class="tutorial-overlay" style="display: none;">
+        <div class="tutorial-modal">
+            <h2 class="tutorial-title">Welcome to Quantum Black Jack!</h2>
+            <div class="tutorial-content" id="tutorial-content">
+                Learn how to play this quantum version of the classic card game.
+            </div>
+            <button id="tutorial-next-btn" class="tutorial-next-btn">Next</button>
+        </div>
+    </div>
+    
+    <div id="result-overlay" class="result-overlay">
+        <div id="result-message" class="result-message"></div>
+    </div>
+    
     <div id="game-container">
         <div id="canvas-container"></div>
         

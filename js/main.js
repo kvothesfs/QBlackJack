@@ -5,148 +5,126 @@ import { SoundManager } from './utils/SoundManager.js';
 import { TutorialManager } from './ui/TutorialManager.js';
 import { AssetLoader } from './utils/AssetLoader.js';
 
-// Main entry point for the application
+// Main game class
 class QuantumBlackJack {
     constructor() {
+        this.canvas = document.getElementById('game-canvas');
+        this.assetLoader = new AssetLoader();
+        
+        // Game state
+        this.isInitialized = false;
+        
+        // Performance monitoring
+        this.lastFrameTime = 0;
+        this.frameCount = 0;
+        this.lastFpsUpdate = 0;
+        this.fps = 0;
+        
+        // Initialize the game
         this.init();
     }
-
+    
     async init() {
-        // Show loading screen
-        this.showLoadingScreen();
-
         // Set up asset loader and load assets
-        this.assetLoader = new AssetLoader();
         await this.loadAssets();
-
-        // Set up game components
-        this.setupComponents();
-
-        // Set up event listeners
-        this.setupEventListeners();
-
-        // Hide loading screen and show tutorial
-        this.hideLoadingScreen();
-        this.tutorialManager.showTutorial();
+        
+        // Set up managers
+        this.soundManager = new SoundManager();
+        this.sceneManager = new SceneManager(this.canvas, this.assetLoader);
+        this.gameManager = new GameManager(this.sceneManager, this.assetLoader, this.soundManager);
+        this.uiManager = new UIManager(this.gameManager, this.soundManager);
+        this.tutorialManager = new TutorialManager(this.uiManager);
+        
+        // Connect managers
+        this.gameManager.setUIManager(this.uiManager);
+        
+        // Start the render loop
+        this.isInitialized = true;
+        this.animate();
+        
+        // Start game music
+        this.soundManager.startBackgroundMusic();
+        
+        // Set up event listeners for resize and visibility changes
+        window.addEventListener('resize', () => this.onWindowResize());
+        document.addEventListener('visibilitychange', () => this.onVisibilityChange());
     }
-
-    showLoadingScreen() {
-        const loadingScreen = document.getElementById('loading-screen');
-        loadingScreen.style.display = 'flex';
-    }
-
-    hideLoadingScreen() {
-        const loadingScreen = document.getElementById('loading-screen');
-        loadingScreen.style.display = 'none';
-    }
-
-    updateLoadingProgress(progress) {
-        const progressBar = document.querySelector('.progress');
-        progressBar.style.width = `${progress}%`;
-    }
-
+    
     async loadAssets() {
-        // Register all assets to load
-        this.assetLoader.registerTextures([
-            { name: 'cardBack', path: 'assets/textures/card-back.jpg' },
-            { name: 'table', path: 'assets/textures/table.jpg' },
-            { name: 'chip', path: 'assets/textures/chip.png' }
-        ]);
-        
-        // Register card textures
-        const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
-        const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
-        
-        suits.forEach(suit => {
-            values.forEach(value => {
-                this.assetLoader.registerTexture({
-                    name: `card_${value}_of_${suit}`,
-                    path: `assets/textures/cards/${value}_of_${suit}.png`
-                });
-            });
-        });
-        
-        // Register sounds
-        this.assetLoader.registerSounds([
-            { name: 'cardPlace', path: 'assets/sounds/card-place.mp3' },
-            { name: 'cardFlip', path: 'assets/sounds/card-flip.mp3' },
-            { name: 'win', path: 'assets/sounds/win.mp3' },
-            { name: 'lose', path: 'assets/sounds/lose.mp3' },
-            { name: 'superposition', path: 'assets/sounds/superposition.mp3' },
-            { name: 'entanglement', path: 'assets/sounds/entanglement.mp3' },
-            { name: 'collapse', path: 'assets/sounds/collapse.mp3' }
-        ]);
-
-        // Load all assets with progress tracking
         return new Promise((resolve) => {
-            this.assetLoader.loadAll((progress) => {
-                this.updateLoadingProgress(progress);
-                if (progress === 100) {
-                    resolve();
+            // Generate procedural assets instead of loading physical ones
+            this.assetLoader.generateProceduralAssets();
+            
+            // Simulate loading progress for a better user experience
+            let progress = 0;
+            const uiManager = document.getElementById('loading-bar');
+            const loadingText = document.getElementById('loading-text');
+            
+            const interval = setInterval(() => {
+                progress += 5;
+                
+                // Update loading bar
+                if (uiManager) {
+                    uiManager.style.width = `${progress}%`;
                 }
-            });
+                
+                // Update loading text
+                if (loadingText) {
+                    loadingText.textContent = `Loading assets: ${progress}%`;
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(resolve, 500); // Add a small delay after reaching 100%
+                }
+            }, 100);
         });
     }
-
-    setupComponents() {
-        // Initialize scene and render loop
-        this.sceneManager = new SceneManager(document.getElementById('canvas-container'));
+    
+    animate(currentTime) {
+        requestAnimationFrame((time) => this.animate(time));
         
-        // Initialize sound manager
-        this.soundManager = new SoundManager(this.assetLoader);
+        if (!this.isInitialized) return;
         
-        // Initialize game manager
-        this.gameManager = new GameManager(this.sceneManager, this.soundManager, this.assetLoader);
+        // Calculate delta time
+        const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+        this.lastFrameTime = currentTime;
         
-        // Initialize UI manager
-        this.uiManager = new UIManager(this.gameManager);
+        // Update FPS counter
+        this.frameCount++;
+        if (currentTime - this.lastFpsUpdate >= 1000) {
+            this.fps = this.frameCount;
+            this.frameCount = 0;
+            this.lastFpsUpdate = currentTime;
+        }
         
-        // Initialize tutorial manager
-        this.tutorialManager = new TutorialManager();
+        // Update scene and game logic
+        if (this.sceneManager) {
+            this.sceneManager.update(deltaTime);
+        }
         
-        // Start render loop
-        this.sceneManager.startRenderLoop(() => this.update());
+        if (this.gameManager) {
+            this.gameManager.update(deltaTime);
+        }
     }
-
-    setupEventListeners() {
-        // Window resize handler
-        window.addEventListener('resize', () => {
-            this.sceneManager.onWindowResize();
-        });
-        
-        // Connect UI manager to game manager events
-        this.gameManager.on('moneyChanged', (money) => {
-            this.uiManager.updateMoney(money);
-        });
-        
-        this.gameManager.on('betChanged', (bet) => {
-            this.uiManager.updateBet(bet);
-        });
-        
-        this.gameManager.on('handValueChanged', (value) => {
-            this.uiManager.updateHandValue(value);
-        });
-        
-        this.gameManager.on('chipsChanged', (chipCounts) => {
-            this.uiManager.updateChips(chipCounts);
-        });
-        
-        this.gameManager.on('gameStateChanged', (state) => {
-            this.uiManager.updateGameState(state);
-        });
-        
-        this.gameManager.on('notification', (message) => {
-            this.uiManager.showNotification(message);
-        });
+    
+    onWindowResize() {
+        if (this.sceneManager) {
+            this.sceneManager.resize(window.innerWidth, window.innerHeight);
+        }
     }
-
-    update() {
-        // Update game state
-        this.gameManager.update();
+    
+    onVisibilityChange() {
+        // Pause audio when tab is not visible
+        if (document.hidden && this.soundManager) {
+            this.soundManager.pauseAll();
+        } else if (this.soundManager) {
+            this.soundManager.resumeAll();
+        }
     }
 }
 
-// Create and initialize the game when the DOM is fully loaded
+// Initialize the game when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new QuantumBlackJack();
+    const game = new QuantumBlackJack();
 }); 

@@ -62,61 +62,97 @@ export class SceneManager {
     }
 
     setupLights() {
-        // Ambient light for overall illumination
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        // Main directional light
+        this.dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        this.dirLight.position.set(5, 5, 5);
+        this.dirLight.castShadow = true;
+        this.dirLight.shadow.mapSize.width = 1024;
+        this.dirLight.shadow.mapSize.height = 1024;
+        this.dirLight.shadow.camera.near = 0.5;
+        this.dirLight.shadow.camera.far = 50;
+        this.dirLight.shadow.bias = -0.001;
+        this.scene.add(this.dirLight);
+        
+        // Add vaporwave ambient light
+        const ambientLight = new THREE.AmbientLight(0x33007a, 0.3);
         this.scene.add(ambientLight);
         
-        // Main directional light with shadows
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(5, 10, 5);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 30;
-        directionalLight.shadow.camera.left = -10;
-        directionalLight.shadow.camera.right = 10;
-        directionalLight.shadow.camera.top = 10;
-        directionalLight.shadow.camera.bottom = -10;
-        this.scene.add(directionalLight);
+        // Add neon style point lights
+        this.addNeonLight(0xff00ff, 3, 1, -3, 0.7); // Magenta
+        this.addNeonLight(0x00ffff, -3, 1, 3, 0.7); // Cyan
         
-        // Add some spotlights for dramatic effect
-        const spotLight1 = new THREE.SpotLight(0xffffff, 0.8);
-        spotLight1.position.set(-5, 8, 0);
-        spotLight1.castShadow = true;
-        spotLight1.angle = Math.PI / 6;
-        this.scene.add(spotLight1);
+        // Animated rotating light for vaporwave effect
+        this.rotatingLight = new THREE.PointLight(0xff0080, 0.5, 15);
+        this.rotatingLight.position.set(0, 4, 0);
+        this.scene.add(this.rotatingLight);
+    }
+    
+    addNeonLight(color, x, y, z, intensity) {
+        const light = new THREE.PointLight(color, intensity, 10);
+        light.position.set(x, y, z);
         
-        const spotLight2 = new THREE.SpotLight(0xffffff, 0.8);
-        spotLight2.position.set(5, 8, 0);
-        spotLight2.castShadow = true;
-        spotLight2.angle = Math.PI / 6;
-        this.scene.add(spotLight2);
+        // Add a small sphere to represent the light source
+        const lightSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 16, 16),
+            new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8 })
+        );
+        lightSphere.position.copy(light.position);
+        
+        this.scene.add(light);
+        this.scene.add(lightSphere);
     }
 
     setupTable() {
-        // Create a green felt table
+        // Create a vaporwave-themed table
         const tableGeometry = new THREE.BoxGeometry(15, 0.2, 8);
         const tableMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x0a6640,
-            roughness: 0.8,
-            metalness: 0.2
+            color: 0x0a4b40, // Dark teal
+            roughness: 0.7,
+            metalness: 0.3,
+            map: this.assetLoader.getTexture('table')
         });
         this.table = new THREE.Mesh(tableGeometry, tableMaterial);
         this.table.receiveShadow = true;
         this.table.position.set(0, -0.1, 0);
         this.scene.add(this.table);
         
-        // Add table border
+        // Add table border with gradient color
         const borderGeometry = new THREE.BoxGeometry(15.5, 0.4, 8.5);
         const borderMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x3a2618,
+            color: 0x9400D3, // Violet
             roughness: 0.5,
-            metalness: 0.3
+            metalness: 0.5,
+            emissive: 0x450066,
+            emissiveIntensity: 0.2
         });
         const tableBorder = new THREE.Mesh(borderGeometry, borderMaterial);
         tableBorder.position.set(0, -0.2, 0);
+        tableBorder.receiveShadow = true;
         this.scene.add(tableBorder);
+        
+        // Add grid lines on the table
+        this.addGridLines();
+    }
+    
+    addGridLines() {
+        // Create a grid with cyan lines
+        const gridSize = 30;
+        const gridDivisions = 20;
+        const gridColor = 0x00FFFF; // Cyan
+        
+        const grid = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
+        grid.position.y = 0.001; // Just above the table
+        grid.material.transparent = true;
+        grid.material.opacity = 0.15;
+        this.scene.add(grid);
+        
+        // Add a second grid rotated for vaporwave perspective effect
+        const grid2 = new THREE.GridHelper(gridSize, gridDivisions, 0xFF00FF, 0xFF00FF); // Magenta
+        grid2.position.y = 0.002; // Just above the first grid
+        grid2.rotation.z = Math.PI / 4; // 45 degrees
+        grid2.material.transparent = true;
+        grid2.material.opacity = 0.1;
+        this.scene.add(grid2);
     }
 
     setupOrbitControls() {
@@ -155,6 +191,18 @@ export class SceneManager {
         // Call the update callback
         if (this.updateCallback) {
             this.updateCallback();
+        }
+        
+        // Rotate the light for vaporwave effect
+        if (this.rotatingLight) {
+            const time = Date.now() * 0.001;
+            this.rotatingLight.position.x = Math.sin(time * 0.5) * 5;
+            this.rotatingLight.position.z = Math.cos(time * 0.5) * 5;
+            
+            // Slowly cycle the color
+            const hue = (time * 0.1) % 1;
+            const color = new THREE.Color().setHSL(hue, 1, 0.5);
+            this.rotatingLight.color = color;
         }
         
         // Render the scene

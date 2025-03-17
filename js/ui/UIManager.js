@@ -1,8 +1,9 @@
 import { GameState } from '../quantum/GameManager.js';
 
 export class UIManager {
-    constructor(gameManager) {
+    constructor(gameManager, soundManager) {
         this.gameManager = gameManager;
+        this.soundManager = soundManager;
         
         // UI elements
         this.moneyDisplay = document.getElementById('money');
@@ -41,6 +42,37 @@ export class UIManager {
         // Tutorial elements
         this.tutorialContent = document.getElementById('tutorial-content');
         this.tutorialNext = document.getElementById('tutorial-next');
+        
+        // UI Elements
+        this.hitButton = document.getElementById('hit-btn');
+        this.standButton = document.getElementById('stand-btn');
+        this.superpositionButton = document.getElementById('superposition-btn');
+        this.entanglementButton = document.getElementById('entanglement-btn');
+        this.measureButton = document.getElementById('measure-btn');
+        this.newGameButton = document.getElementById('new-game-btn');
+        
+        // Status display
+        this.statusDisplay = document.getElementById('status-display');
+        this.playerValueElement = document.getElementById('player-value');
+        this.dealerValueElement = document.getElementById('dealer-value');
+        this.superpositionCountElement = document.getElementById('superposition-count');
+        this.entanglementCountElement = document.getElementById('entanglement-count');
+        
+        // Result overlay
+        this.resultOverlay = document.getElementById('result-overlay');
+        this.resultMessage = document.getElementById('result-message');
+        
+        // Sound toggle button
+        this.soundToggle = document.getElementById('sound-toggle');
+        this.soundIcon = this.soundToggle.querySelector('.sound-icon');
+        
+        // UI Container
+        this.uiContainer = document.getElementById('ui-container');
+        
+        // Loading screen
+        this.loadingScreen = document.getElementById('loading-screen');
+        this.loadingBar = document.getElementById('loading-bar');
+        this.loadingText = document.getElementById('loading-text');
         
         // Initialize UI
         this.initUI();
@@ -102,6 +134,21 @@ export class UIManager {
                 this.closeShopDialog();
             }
         });
+        
+        // Set up event listeners for new UI elements
+        this.hitButton.addEventListener('click', () => this.onHitClick());
+        this.standButton.addEventListener('click', () => this.onStandClick());
+        this.superpositionButton.addEventListener('click', () => this.onSuperpositionClick());
+        this.entanglementButton.addEventListener('click', () => this.onEntanglementClick());
+        this.measureButton.addEventListener('click', () => this.onMeasureClick());
+        this.newGameButton.addEventListener('click', () => this.onNewGameClick());
+        this.soundToggle.addEventListener('click', () => this.toggleSound());
+        
+        // Set initial button states
+        this.updateButtonStates();
+        
+        // Add neon glow effect to buttons on hover
+        this.addButtonEffects();
     }
 
     updateMoney(money) {
@@ -400,5 +447,100 @@ export class UIManager {
         }
         
         document.body.removeChild(textArea);
+    }
+
+    addButtonEffects() {
+        const buttons = document.querySelectorAll('.button');
+        
+        buttons.forEach(button => {
+            button.addEventListener('mouseover', () => {
+                this.soundManager.playProceduralSound('hover', 0.1);
+            });
+            
+            button.addEventListener('click', () => {
+                this.soundManager.playProceduralSound('click', 0.2);
+            });
+        });
+    }
+
+    toggleSound() {
+        this.soundManager.toggleMute();
+        
+        // Update icon
+        if (this.soundManager.soundEnabled) {
+            this.soundIcon.textContent = '🔊';
+        } else {
+            this.soundIcon.textContent = '��';
+        }
+    }
+
+    updateLoadingProgress(progress) {
+        // Update loading bar width
+        this.loadingBar.style.width = `${progress}%`;
+        this.loadingText.textContent = `Loading assets: ${Math.round(progress)}%`;
+        
+        // If loading is complete, hide loading screen after a short delay
+        if (progress >= 100) {
+            setTimeout(() => {
+                this.loadingScreen.style.display = 'none';
+                this.uiContainer.style.display = 'flex';
+                this.statusDisplay.style.display = 'block';
+                
+                // Start background music when loading is complete
+                this.soundManager.startBackgroundMusic();
+                
+                // Show tutorial
+                this.showTutorial();
+            }, 500);
+        }
+    }
+
+    updateHandValues(playerValue, dealerValue) {
+        this.playerValueElement.textContent = playerValue;
+        this.dealerValueElement.textContent = dealerValue;
+    }
+    
+    updateQuantumCounts(superpositionCount, entanglementCount) {
+        this.superpositionCountElement.textContent = superpositionCount;
+        this.entanglementCountElement.textContent = entanglementCount;
+    }
+    
+    showWin() {
+        this.resultMessage.textContent = 'YOU WIN';
+        this.resultMessage.className = 'result-message win-message';
+        this.resultOverlay.classList.add('show');
+        
+        // Play win sound
+        this.soundManager.playWinSound();
+        
+        setTimeout(() => {
+            this.resultOverlay.classList.remove('show');
+        }, 3000);
+    }
+    
+    showLose() {
+        this.resultMessage.textContent = 'YOU LOSE';
+        this.resultMessage.className = 'result-message lose-message';
+        this.resultOverlay.classList.add('show');
+        
+        // Play lose sound
+        this.soundManager.playLoseSound();
+        
+        setTimeout(() => {
+            this.resultOverlay.classList.remove('show');
+        }, 3000);
+    }
+    
+    showTie() {
+        this.resultMessage.textContent = 'TIE GAME';
+        this.resultMessage.className = 'result-message win-message';
+        this.resultOverlay.classList.add('show');
+        
+        // Play tie sound
+        this.soundManager.playCardPlaceSound();
+        
+        setTimeout(() => {
+            this.resultOverlay.classList.remove('show');
+        }, 3000);
     }
 } 

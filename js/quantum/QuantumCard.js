@@ -36,62 +36,43 @@ export class QuantumCard {
     }
 
     createMesh() {
-        // Create card geometry (slightly elongated rectangle)
-        const cardWidth = 0.7;
-        const cardHeight = 1.0;
-        const cardGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
-        
-        // Create materials for front and back
-        this.frontMaterial = new THREE.MeshStandardMaterial({
-            map: this.assetLoader.getTexture(`card_${this.state1.value}_of_${this.state1.suit}`),
-            roughness: 0.5,
-            metalness: 0.1,
-            side: THREE.FrontSide
+        const cardGeometry = new THREE.BoxGeometry(1.4, 0.01, 2);
+        const cardMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.3,
+            metalness: 0.7,
+            map: this.assetLoader.getTexture(`card_${this.state1.value}_of_${this.state1.suit}`)
         });
         
-        this.backMaterial = new THREE.MeshStandardMaterial({
-            map: this.assetLoader.getTexture('cardBack'),
-            roughness: 0.5,
-            metalness: 0.1,
-            side: THREE.BackSide
+        const backMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.3,
+            metalness: 0.7,
+            map: this.assetLoader.getTexture('cardBack')
         });
         
-        // Create the alternative state material for superposition
-        this.altMaterial = new THREE.MeshStandardMaterial({
-            map: this.assetLoader.getTexture(`card_${this.state2.value}_of_${this.state2.suit}`),
-            roughness: 0.5,
-            metalness: 0.1,
-            side: THREE.FrontSide,
-            transparent: true,
-            opacity: 0
-        });
+        // Create materials array with front and back textures
+        const materials = [
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // right
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // left
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // top
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // bottom
+            cardMaterial, // front
+            backMaterial  // back
+        ];
         
-        // Create a group to hold the card faces
-        this.mesh = new THREE.Group();
+        this.mesh = new THREE.Mesh(cardGeometry, materials);
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
         
-        // Create front and back faces
-        this.frontFace = new THREE.Mesh(cardGeometry, this.frontMaterial);
-        this.frontFace.castShadow = true;
-        this.frontFace.receiveShadow = true;
+        // Add vaporwave neon edge effect
+        this.addNeonEdges();
         
-        this.backFace = new THREE.Mesh(cardGeometry, this.backMaterial);
-        this.backFace.castShadow = true;
-        this.backFace.receiveShadow = true;
-        this.backFace.rotation.y = Math.PI;
+        // Create the superposition effect
+        this.createSuperpositionEffect();
         
-        // Create alternative state face (for superposition visualization)
-        this.altFace = new THREE.Mesh(cardGeometry, this.altMaterial);
-        this.altFace.castShadow = true;
-        this.altFace.receiveShadow = true;
-        this.altFace.visible = false;
-        
-        // Add faces to the group
-        this.mesh.add(this.frontFace);
-        this.mesh.add(this.backFace);
-        this.mesh.add(this.altFace);
-        
-        // Create glow effect for superposition
-        this.createGlowEffect();
+        // Create the entanglement effect
+        this.createEntanglementEffect();
         
         // Set initial rotation (back facing up)
         this.mesh.rotation.x = Math.PI; // Face down initially
@@ -99,39 +80,111 @@ export class QuantumCard {
         // Add userData for raycasting
         this.mesh.userData.card = this;
     }
+    
+    addNeonEdges() {
+        // Create neon edges for the card
+        const edges = new THREE.EdgesGeometry(this.mesh.geometry);
+        this.edgesLine = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ 
+                color: this.isEntangled ? 0xff00ff : 0x00ffff,
+                transparent: true,
+                opacity: 0.8,
+                linewidth: 1
+            })
+        );
+        
+        // Scale slightly larger than the card to avoid z-fighting
+        this.edgesLine.scale.set(1.02, 1.2, 1.02);
+        this.mesh.add(this.edgesLine);
+        
+        // Add pulsing animation for the edges
+        this.edgePulseTime = 0;
+    }
 
-    createGlowEffect() {
-        // Create a subtle glow effect for superposition and entanglement
-        const glowGeometry = new THREE.PlaneGeometry(0.8, 1.1); // Slightly larger than card
+    createSuperpositionEffect() {
+        // Create particle system for superposition effect
+        const particleCount = 50;
+        const particleGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleSizes = new Float32Array(particleCount);
         
-        // Superposition glow (cyan)
-        this.superpositionGlow = new THREE.Mesh(
-            glowGeometry,
-            new THREE.MeshBasicMaterial({
-                color: 0x89ddff,
-                transparent: true,
-                opacity: 0,
-                side: THREE.DoubleSide,
-                blending: THREE.AdditiveBlending
-            })
-        );
-        this.superpositionGlow.position.z = -0.01; // Slightly behind the card
+        for (let i = 0; i < particleCount; i++) {
+            // Random positions around the card
+            particlePositions[i * 3] = (Math.random() - 0.5) * 1.5;
+            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 0.5;
+            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 2.1;
+            
+            // Random sizes for the particles
+            particleSizes[i] = Math.random() * 0.05 + 0.02;
+        }
         
-        // Entanglement glow (magenta)
-        this.entanglementGlow = new THREE.Mesh(
-            glowGeometry,
-            new THREE.MeshBasicMaterial({
-                color: 0xf48fb1,
-                transparent: true,
-                opacity: 0,
-                side: THREE.DoubleSide,
-                blending: THREE.AdditiveBlending
-            })
-        );
-        this.entanglementGlow.position.z = -0.02; // Even more behind
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
         
-        this.mesh.add(this.superpositionGlow);
-        this.mesh.add(this.entanglementGlow);
+        // Create shader material for the particles
+        const particleMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                color: { value: new THREE.Color(0x00ffff) },
+                time: { value: 0 }
+            },
+            vertexShader: `
+                attribute float size;
+                uniform float time;
+                varying float vAlpha;
+                
+                void main() {
+                    vec3 pos = position;
+                    // Add wavy motion
+                    pos.x += sin(time * 2.0 + position.z * 5.0) * 0.05;
+                    pos.y += cos(time * 2.5 + position.x * 4.0) * 0.05;
+                    pos.z += sin(time * 3.0 + position.y * 3.0) * 0.05;
+                    
+                    vAlpha = 0.7 + 0.3 * sin(time * 3.0 + position.y * 5.0);
+                    
+                    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                    gl_PointSize = size * (300.0 / -mvPosition.z);
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 color;
+                varying float vAlpha;
+                
+                void main() {
+                    // Create a circular point
+                    vec2 center = gl_PointCoord - vec2(0.5);
+                    float dist = length(center);
+                    if (dist > 0.5) discard;
+                    
+                    // Add glow effect
+                    float glow = 1.0 - dist * 2.0;
+                    gl_FragColor = vec4(color, vAlpha * glow);
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        this.superpositionParticles = new THREE.Points(particleGeometry, particleMaterial);
+        this.superpositionParticles.visible = false;
+        this.mesh.add(this.superpositionParticles);
+    }
+    
+    createEntanglementEffect() {
+        // Create entanglement visual effect
+        const lineGeometry = new THREE.BufferGeometry();
+        const lineMaterial = new THREE.LineBasicMaterial({
+            color: 0xff00ff,
+            transparent: true,
+            opacity: 0.8,
+            linewidth: 2
+        });
+        
+        // Will be populated when entanglement is established
+        this.entanglementLine = new THREE.Line(lineGeometry, lineMaterial);
+        this.entanglementLine.visible = false;
     }
 
     flipToFront(duration = 0.5) {
@@ -176,33 +229,55 @@ export class QuantumCard {
             }
         }
         
-        // Superposition effects (wobble and glow)
-        if (!this.collapsed) {
-            // Update wobble
-            if (this.wobbleAmount > 0) {
-                this.mesh.rotation.z = Math.sin(Date.now() * this.wobbleSpeed * 0.01) * this.wobbleAmount;
-                this.mesh.rotation.y = Math.cos(Date.now() * this.wobbleSpeed * 0.005) * this.wobbleAmount * 0.5;
-            }
+        // Update superposition effect
+        if (this.isInSuperposition && this.superpositionParticles) {
+            this.superpositionParticles.visible = true;
+            this.superpositionParticles.material.uniforms.time.value += deltaTime;
             
-            // Update glow pulse
-            if (this.glowIntensity > 0) {
-                const pulse = (Math.sin(Date.now() * this.pulseSpeed * 0.001) + 1) * 0.5; // 0 to 1
-                this.superpositionGlow.material.opacity = this.glowIntensity * pulse;
+            if (this.edgesLine) {
+                // Pulse the edge color and opacity for superposition
+                this.edgePulseTime += deltaTime * 2;
+                const pulseValue = (Math.sin(this.edgePulseTime) + 1) / 2;
+                this.edgesLine.material.opacity = 0.5 + pulseValue * 0.5;
                 
-                // Update alt face opacity for "flickering" between states
-                if (this.altFace.visible) {
-                    const flicker = Math.sin(Date.now() * 0.01) * 0.5 + 0.5; // 0 to 1
-                    this.altMaterial.opacity = flicker * 0.6; // Max 60% opacity
-                    this.frontMaterial.opacity = 1 - (flicker * 0.4); // Min 60% opacity
-                }
+                // Slowly cycle colors for superposition
+                const hue = (this.edgePulseTime * 0.1) % 1;
+                const color = new THREE.Color().setHSL(hue, 1, 0.5);
+                this.edgesLine.material.color = color;
             }
+        } else if (this.superpositionParticles) {
+            this.superpositionParticles.visible = false;
+        }
+        
+        // Update entanglement effect
+        if (this.isEntangled && this.entangledWith && this.entanglementLine) {
+            this.entanglementLine.visible = true;
             
-            // Entanglement glow
-            if (this.entangledWith) {
-                const entanglePulse = (Math.sin(Date.now() * 0.002) + 1) * 0.5; // 0 to 1
-                this.entanglementGlow.material.opacity = 0.5 * entanglePulse;
-            } else {
-                this.entanglementGlow.material.opacity = 0;
+            // Get position of this card and entangled card
+            const pos1 = new THREE.Vector3();
+            this.mesh.getWorldPosition(pos1);
+            
+            const pos2 = new THREE.Vector3();
+            this.entangledWith.mesh.getWorldPosition(pos2);
+            
+            // Update line geometry to connect the cards
+            const points = [pos1, pos2];
+            this.entanglementLine.geometry.setFromPoints(points);
+            
+            // Add pulsing effect to entanglement line
+            const pulseValue = (Math.sin(this.edgePulseTime) + 1) / 2;
+            this.entanglementLine.material.opacity = 0.5 + pulseValue * 0.5;
+            
+            // Set edge color to magenta for entanglement
+            if (this.edgesLine) {
+                this.edgesLine.material.color.set(0xff00ff);
+            }
+        } else if (this.entanglementLine) {
+            this.entanglementLine.visible = false;
+            
+            // Reset edge color to cyan if not entangled
+            if (this.edgesLine && !this.isEntangled) {
+                this.edgesLine.material.color.set(0x00ffff);
             }
         }
     }
@@ -217,7 +292,7 @@ export class QuantumCard {
             this.amplitudes.state2 = { real: 1/Math.sqrt(2), imaginary: 0 };
             
             // Show alternative state
-            this.altFace.visible = true;
+            this.superpositionParticles.visible = true;
             
             // Enable wobble and glow effects
             this.wobbleAmount = 0.1;
@@ -248,14 +323,14 @@ export class QuantumCard {
             }
             
             // Update front material to show the collapsed state
-            this.frontMaterial.map = this.assetLoader.getTexture(
+            this.mesh.children[4].material.map = this.assetLoader.getTexture(
                 `card_${this.currentState.value}_of_${this.currentState.suit}`
             );
-            this.frontMaterial.needsUpdate = true;
-            this.frontMaterial.opacity = 1.0;
+            this.mesh.children[4].material.needsUpdate = true;
+            this.mesh.children[4].material.opacity = 1.0;
             
-            // Hide alternative face
-            this.altFace.visible = false;
+            // Hide superposition particles
+            this.superpositionParticles.visible = false;
             
             // Reset quantum effects
             this.collapsed = true;
@@ -263,8 +338,8 @@ export class QuantumCard {
             this.wobbleSpeed = 0;
             this.glowIntensity = 0;
             this.pulseSpeed = 0;
-            this.superpositionGlow.material.opacity = 0;
-            this.entanglementGlow.material.opacity = 0;
+            this.superpositionParticles.material.uniforms.time.value = 0;
+            this.entanglementLine.visible = false;
             
             // Reset mesh rotation
             this.mesh.rotation.z = 0;
