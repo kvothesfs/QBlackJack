@@ -14,12 +14,14 @@ export class QuantumCard {
         this.state1 = { value: this.value, suit: this.suit }; // Primary state
         this.state2 = null;                                  // Secondary state (for superposition)
         
-        // Quantum properties
+        // Enhanced quantum properties
         this.isInSuperposition = false;     // Whether the card is in superposition
         this.isEntangled = false;           // Whether the card is entangled
         this.entangledWith = null;          // Card that this card is entangled with
         this.superpositionStates = [];      // States for superposition
-        this.amplitudes = [];               // Amplitudes for each superposition state
+        this.amplitudes = [];               // Complex amplitudes for each superposition state
+        this.phase = 0;                     // Phase angle for quantum interference
+        this.coherence = 1.0;               // Quantum coherence (decreases with measurement)
         
         // 3D properties
         this.mesh = null;                   // THREE.js mesh for the card
@@ -29,7 +31,7 @@ export class QuantumCard {
         
         // Initial state is the actual card value/suit
         this.superpositionStates.push({ value: this.value, suit: this.suit });
-        this.amplitudes.push(1.0);  // 100% probability for the actual state
+        this.amplitudes.push({ real: 1.0, imag: 0.0 });  // 100% probability for the actual state
     }
     
     /**
@@ -121,7 +123,7 @@ export class QuantumCard {
             for (let i = 0; i < this.superpositionStates.length; i++) {
                 const state = this.superpositionStates[i];
                 const amplitude = this.amplitudes[i];
-                const probability = amplitude * amplitude;  // Quantum probability is the square of the amplitude
+                const probability = amplitude.real * amplitude.real + amplitude.imag * amplitude.imag;  // Quantum probability is the square of the amplitude
                 
                 let gameValue;
                 if (state.value === 1) {
@@ -162,8 +164,13 @@ export class QuantumCard {
         // Add the alternative state to superposition states
         this.superpositionStates.push(alternativeState);
         
-        // Set equal amplitudes for both states (1/sqrt(2) ≈ 0.7071)
-        this.amplitudes = [0.7071, 0.7071];
+        // Set complex amplitudes for both states (1/sqrt(2) ≈ 0.7071)
+        // Add a random phase for quantum interference effects
+        this.phase = Math.random() * Math.PI * 2;
+        this.amplitudes = [
+            { real: 0.7071 * Math.cos(this.phase), imag: 0.7071 * Math.sin(this.phase) },
+            { real: 0.7071 * Math.cos(this.phase + Math.PI), imag: 0.7071 * Math.sin(this.phase + Math.PI) }
+        ];
         
         // Update state properties for easier access
         this.state1 = this.superpositionStates[0];
@@ -171,14 +178,15 @@ export class QuantumCard {
         
         // Mark card as in superposition
         this.isInSuperposition = true;
+        this.coherence = 1.0; // Reset coherence when entering superposition
         
         // Apply visual effect to card mesh if it exists
         if (this.mesh) {
-            // Add cyan glow effect
+            // Add cyan glow effect with phase-dependent intensity
             if (this.mesh.material && Array.isArray(this.mesh.material)) {
                 for (const mat of this.mesh.material) {
                     mat.emissive = new THREE.Color(0, 1, 1);
-                    mat.emissiveIntensity = 0.3;
+                    mat.emissiveIntensity = 0.3 * (1 + Math.sin(this.phase));
                 }
             }
         }
@@ -217,8 +225,10 @@ export class QuantumCard {
         
         console.log(`Measuring superposition: ${this.toString()}`);
         
-        // Calculate probabilities
-        const probabilities = this.amplitudes.map(a => a * a);
+        // Calculate probabilities from amplitudes
+        const probabilities = this.amplitudes.map(a => 
+            a.real * a.real + a.imag * a.imag
+        );
         
         // Choose a random outcome based on probabilities
         const random = Math.random();
@@ -245,7 +255,8 @@ export class QuantumCard {
         // Reset superposition properties
         this.isInSuperposition = false;
         this.superpositionStates = [{ value: this.value, suit: this.suit }];
-        this.amplitudes = [1.0];
+        this.amplitudes = [{ real: 1.0, imag: 0.0 }];
+        this.coherence = 0.0; // Coherence is lost after measurement
         
         // Apply visual effect to card mesh if it exists
         if (this.mesh) {
@@ -311,7 +322,7 @@ export class QuantumCard {
         entangledCard.isEntangled = false;
         entangledCard.entangledWith = null;
         entangledCard.superpositionStates = [{ value: entangledCard.value, suit: entangledCard.suit }];
-        entangledCard.amplitudes = [1.0];
+        entangledCard.amplitudes = [{ real: 1.0, imag: 0.0 }];
         
         // Update the entangled card's mesh
         if (entangledCard.mesh) {
@@ -467,6 +478,37 @@ export class QuantumCard {
         ctx.font = '300px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(suitSymbol, canvas.width / 2, canvas.height / 2 + 75);
+        
+        // Add quantum effects if in superposition
+        if (this.isInSuperposition) {
+            // Add interference pattern
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+            
+            // Draw interference lines based on phase
+            for (let i = 0; i < 10; i++) {
+                const y = canvas.height * (i / 10);
+                const amplitude = 20 * Math.sin(this.phase + i * Math.PI / 5);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y + amplitude);
+                ctx.stroke();
+            }
+            ctx.restore();
+            
+            // Add probability indicators
+            this.amplitudes.forEach((amp, index) => {
+                const prob = amp.real * amp.real + amp.imag * amp.imag;
+                const state = this.superpositionStates[index];
+                ctx.font = '20px Arial, sans-serif';
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${state.value} of ${state.suit}: ${(prob * 100).toFixed(1)}%`, 
+                            40, 300 + index * 30);
+            });
+        }
         
         // Create texture from canvas
         const texture = new THREE.Texture(canvas);

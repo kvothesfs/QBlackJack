@@ -302,12 +302,20 @@ export class BlackjackGame {
         
         // First sum up all cards
         for (const card of hand) {
-            // For cards in superposition, use the average value
+            // For cards in superposition, use the average value weighted by probabilities
             if (card.isInSuperposition) {
                 hasSuperposition = true;
                 const possibleValues = card.getPossibleGameValues();
-                const avgValue = possibleValues.reduce((a, b) => a + b, 0) / possibleValues.length;
-                value += Math.round(avgValue);
+                const probabilities = card.amplitudes.map(amp => 
+                    amp.real * amp.real + amp.imag * amp.imag
+                );
+                
+                // Calculate weighted average
+                let weightedValue = 0;
+                for (let i = 0; i < possibleValues.length; i++) {
+                    weightedValue += possibleValues[i] * probabilities[i];
+                }
+                value += Math.round(weightedValue);
                 
                 // Check if any possible state is an Ace
                 if (possibleValues.includes(11)) {
@@ -349,8 +357,26 @@ export class BlackjackGame {
                 this.quantumBonusApplied = true;
                 this.quantumStreak++;
                 
+                // Calculate quantum advantage based on coherence and entanglement
+                let quantumAdvantage = 0;
+                if (hasSuperposition) {
+                    // Add advantage based on number of cards in superposition
+                    const superposedCards = hand.filter(c => c.isInSuperposition);
+                    quantumAdvantage += superposedCards.length * 0.5;
+                }
+                if (hasEntanglement) {
+                    // Add advantage for entangled cards
+                    const entangledCards = hand.filter(c => c.isEntangled);
+                    quantumAdvantage += entangledCards.length * 0.3;
+                }
+                
+                // Apply the quantum advantage
+                value += Math.round(quantumAdvantage);
+                
                 if (this.gameManager.uiManager) {
-                    this.gameManager.uiManager.updateStatus(`Quantum probability shift detected! Streak: ${this.quantumStreak}`);
+                    this.gameManager.uiManager.updateStatus(
+                        `Quantum probability shift detected! Streak: ${this.quantumStreak}, Advantage: +${Math.round(quantumAdvantage)}`
+                    );
                 }
             }
         }

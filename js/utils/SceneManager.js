@@ -670,17 +670,31 @@ export class SceneManager {
             if (card) {
                 // Update superposition effects
                 if (card.isInSuperposition) {
-                    // Make the card pulse/glow
-                    const pulseAmount = 0.1 * Math.sin(Date.now() * 0.003);
+                    // Make the card pulse/glow with phase-dependent intensity
+                    const pulseAmount = 0.1 * Math.sin(Date.now() * 0.003 + card.phase);
                     cardObj.scale.set(1 + pulseAmount, 1, 1 + pulseAmount);
                     
-                    // Add cyan glow effect
+                    // Add cyan glow effect with phase-dependent intensity
                     if (cardObj.material && Array.isArray(cardObj.material)) {
-                        const emissiveIntensity = 0.3 + 0.2 * Math.sin(Date.now() * 0.005);
+                        const emissiveIntensity = 0.3 + 0.2 * Math.sin(Date.now() * 0.005 + card.phase);
                         for (const mat of cardObj.material) {
                             mat.emissive = new THREE.Color(0, 1, 1);
                             mat.emissiveIntensity = emissiveIntensity;
                         }
+                    }
+                    
+                    // Add interference pattern effect
+                    if (cardObj.material && Array.isArray(cardObj.material) && cardObj.material[4]) {
+                        // Front face material
+                        const frontMat = cardObj.material[4];
+                        if (!frontMat.userData.originalMap) {
+                            frontMat.userData.originalMap = frontMat.map;
+                        }
+                        
+                        // Create interference pattern texture
+                        const interferenceTexture = this.createInterferenceTexture(card.phase);
+                        frontMat.map = interferenceTexture;
+                        frontMat.needsUpdate = true;
                     }
                 } else if (card.isEntangled) {
                     // Add magenta glow for entangled cards
@@ -702,6 +716,15 @@ export class SceneManager {
                         for (const mat of cardObj.material) {
                             mat.emissive = new THREE.Color(0, 0, 0);
                             mat.emissiveIntensity = 0;
+                        }
+                    }
+                    
+                    // Restore original texture if it exists
+                    if (cardObj.material && Array.isArray(cardObj.material) && cardObj.material[4]) {
+                        const frontMat = cardObj.material[4];
+                        if (frontMat.userData.originalMap) {
+                            frontMat.map = frontMat.userData.originalMap;
+                            frontMat.needsUpdate = true;
                         }
                     }
                 }
@@ -748,36 +771,29 @@ export class SceneManager {
                 }
             }
             
-            // Draw lines between entangled cards
+            // Create new entanglement lines
             for (const card of entangledCards) {
-                if (!card || !card.mesh || !card.entangledWith || !card.entangledWith.mesh) {
-                    continue; // Skip if any required object is null
+                if (card.entangledWith && card.mesh && card.entangledWith.mesh) {
+                    // Create line geometry
+                    const points = [];
+                    points.push(card.mesh.position);
+                    points.push(card.entangledWith.mesh.position);
+                    
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const material = new THREE.LineBasicMaterial({
+                        color: 0xff00ff,
+                        transparent: true,
+                        opacity: 0.5 + 0.3 * Math.sin(Date.now() * 0.002),
+                        linewidth: 2
+                    });
+                    
+                    // Create line
+                    const line = new THREE.Line(geometry, material);
+                    line.userData.isEntanglementLine = true;
+                    
+                    // Add to scene
+                    this.scene.add(line);
                 }
-                
-                const startPos = card.mesh.position.clone();
-                const endPos = card.entangledWith.mesh.position.clone();
-                
-                // Adjust line height to be above cards
-                startPos.y += 0.1;
-                endPos.y += 0.1;
-                
-                // Create line geometry
-                const lineGeometry = new THREE.BufferGeometry().setFromPoints([startPos, endPos]);
-                
-                // Create line material with glow effect
-                const lineMaterial = new THREE.LineBasicMaterial({
-                    color: 0xff00ff,
-                    linewidth: 3,
-                    transparent: true,
-                    opacity: 0.7
-                });
-                
-                // Create line
-                const line = new THREE.Line(lineGeometry, lineMaterial);
-                line.userData.isEntanglementLine = true;
-                
-                // Add to scene
-                this.scene.add(line);
             }
         } catch (error) {
             console.error("Error updating entanglement lines:", error);
@@ -826,6 +842,44 @@ export class SceneManager {
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(1, 1);
+        
+        return texture;
+    }
+
+    createInterferenceTexture(phase) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        
+        // Create interference pattern
+        const imageData = ctx.createImageData(canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const x = (i / 4) % canvas.width;
+            const y = Math.floor((i / 4) / canvas.width);
+            
+            // Calculate interference pattern
+            const dx = x - canvas.width / 2;
+            const dy = y - canvas.height / 2;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Create interference rings
+            const intensity = Math.sin(distance * 0.1 + phase) * 0.5 + 0.5;
+            
+            // Set RGBA values
+            data[i] = 0;     // R
+            data[i + 1] = 255 * intensity; // G
+            data[i + 2] = 255 * intensity; // B
+            data[i + 3] = 128 * intensity; // A
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        
+        // Create texture from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
         
         return texture;
     }
