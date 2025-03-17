@@ -3,6 +3,7 @@ import { QuantumCard } from './QuantumCard.js';
 import { CardState } from './CardState.js';
 import * as THREE from 'three';
 import { TexasHoldEm } from './TexasHoldEm.js';
+import { BlackjackGame } from './BlackjackGame.js';
 
 // Game states
 export const GameState = {
@@ -11,15 +12,18 @@ export const GameState = {
     PLAYER_TURN: 'playerTurn',
     DEALER_TURN: 'dealerTurn',
     RESOLVING: 'resolving',
-    GAME_OVER: 'gameOver'
+    GAME_OVER: 'gameOver',
+    WAITING: 'waiting',
+    PLAYING: 'playing'
 };
 
 export class GameManager extends EventEmitter {
-    constructor(sceneManager, soundManager, assetLoader) {
+    constructor(sceneManager, soundManager, assetLoader, uiManager) {
         super();
         this.sceneManager = sceneManager;
         this.soundManager = soundManager;
         this.assetLoader = assetLoader;
+        this.uiManager = uiManager;
         
         // Add the sound listener to the camera - safely check if camera exists
         if (sceneManager && sceneManager.camera) {
@@ -37,7 +41,7 @@ export class GameManager extends EventEmitter {
         // Game variables
         this.money = 1000; // Starting money
         this.bet = 0;
-        this.gameState = GameState.IDLE;
+        this.gameState = GameState.WAITING;
         
         // Quantum chips
         this.chips = {
@@ -65,8 +69,16 @@ export class GameManager extends EventEmitter {
         // Last game timestamp for update
         this.lastTime = performance.now();
         
-        this.gameType = 'blackjack'; // or 'poker'
-        this.pokerGame = null;
+        this.gameType = null;
+        
+        // Initialize both games but don't start them yet
+        this.blackjackGame = new BlackjackGame(this);
+        this.pokerGame = new TexasHoldEm(this);
+        
+        // Set up event listeners for card selection
+        this.sceneManager.onObjectClick = (card) => {
+            this.handleCardSelection(card);
+        };
     }
     
     // Add a method to safely set the UI manager
@@ -93,6 +105,12 @@ export class GameManager extends EventEmitter {
                 card.update(deltaTime);
             }
         });
+        
+        if (this.gameType === 'blackjack') {
+            this.blackjackGame.update(deltaTime);
+        } else if (this.gameType === 'poker') {
+            this.pokerGame.update(deltaTime);
+        }
     }
 
     setupMouseEvents() {
@@ -846,29 +864,17 @@ export class GameManager extends EventEmitter {
     }
     
     startNewGame() {
-        console.log("Starting new game...");
+        if (!this.gameType) return;
         
-        // Clear cards
-        this.clearTable();
+        this.gameState = GameState.PLAYING;
+        this.selectedCard = null;
+        this.entanglementTarget = null;
         
-        // Reset state
-        this.gameState = GameState.PLAYER_TURN;
-        
-        // Deal cards
-        this.dealInitialCards();
-        
-        // Update UI
-        if (this.uiManager) {
-            const playerValue = this.getHandValue(this.playerCards);
-            const dealerValue = this.getHandValue(this.dealerCards);
-            this.uiManager.updateHandValues(playerValue, dealerValue);
-            
-            const superposedCards = this.playerCards.filter(c => c.isInSuperposition).length;
-            const entangledCards = this.playerCards.filter(c => c.isEntangled).length / 2;
-            this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
+        if (this.gameType === 'blackjack') {
+            this.blackjackGame.startNewGame();
+        } else if (this.gameType === 'poker') {
+            this.pokerGame.startNewGame();
         }
-        
-        console.log("New game started with state:", this.gameState);
     }
     
     // Calculate hand value accounting for Aces
@@ -989,14 +995,28 @@ export class GameManager extends EventEmitter {
             this.deck = [];
             this.initializeDeck();
         } else {
-            this.pokerGame = new TexasHoldEm(this.assetLoader);
+            this.pokerGame = new TexasHoldEm(this);
             this.gameState = 'poker_initial';
         }
     }
 
     setGameType(type) {
         this.gameType = type;
-        this.initializeGame();
+        this.gameState = GameState.WAITING;
+        this.selectedCard = null;
+        this.entanglementTarget = null;
+        
+        // Clear any existing cards
+        this.sceneManager.clearScene();
+        
+        // Initialize the selected game
+        if (type === 'blackjack') {
+            this.blackjackGame.initialize();
+            this.pokerGame.reset();
+        } else if (type === 'poker') {
+            this.pokerGame.initialize();
+            this.blackjackGame.reset();
+        }
     }
 
     // New Poker methods
@@ -1062,5 +1082,12 @@ export class GameManager extends EventEmitter {
             return winner;
         }
         return null;
+    }
+
+    handleCardSelection(card) {
+        if (!card || this.gameState !== GameState.PLAYING) return;
+        
+        this.selectedCard = card;
+        this.uiManager.updateStatus(`Selected card: ${card.state1.value} of ${card.state1.suit}`);
     }
 } 

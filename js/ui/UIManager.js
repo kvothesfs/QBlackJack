@@ -5,6 +5,7 @@ export class UIManager {
         this.gameManager = gameManager;
         this.setupUI();
         this.setupEventListeners();
+        this.currentGameType = null;
     }
 
     setupUI() {
@@ -18,6 +19,7 @@ export class UIManager {
         this.pokerBtn = document.getElementById('poker-btn');
         
         // Blackjack UI elements
+        this.blackjackControls = document.getElementById('blackjack-controls');
         this.hitBtn = document.getElementById('hit-btn');
         this.standBtn = document.getElementById('stand-btn');
         this.newGameBtn = document.getElementById('new-game-btn');
@@ -26,6 +28,7 @@ export class UIManager {
         this.measureBtn = document.getElementById('measure-btn');
         
         // Poker UI elements
+        this.pokerControls = document.getElementById('poker-controls');
         this.betBtn = document.getElementById('bet-btn');
         this.callBtn = document.getElementById('call-btn');
         this.raiseBtn = document.getElementById('raise-btn');
@@ -38,6 +41,9 @@ export class UIManager {
         // Common UI elements
         this.gameContainer = document.getElementById('game-container');
         this.statusDisplay = document.getElementById('status-display');
+        
+        // Hide all game controls initially
+        this.hideAllGameControls();
     }
 
     setupEventListeners() {
@@ -52,19 +58,13 @@ export class UIManager {
         // Game selection
         if (this.blackjackBtn) {
             this.blackjackBtn.addEventListener('click', () => {
-                this.gameManager.setGameType('blackjack');
-                this.hideGameSelection();
-                this.showGameUI();
-                this.updateUIForGameType('blackjack');
+                this.selectGame('blackjack');
             });
         }
         
         if (this.pokerBtn) {
             this.pokerBtn.addEventListener('click', () => {
-                this.gameManager.setGameType('poker');
-                this.hideGameSelection();
-                this.showGameUI();
-                this.updateUIForGameType('poker');
+                this.selectGame('poker');
             });
         }
         
@@ -163,6 +163,20 @@ export class UIManager {
         }
     }
 
+    selectGame(gameType) {
+        this.currentGameType = gameType;
+        this.gameManager.setGameType(gameType);
+        this.hideGameSelection();
+        this.showGameUI();
+        this.updateUIForGameType(gameType);
+        this.gameManager.startNewGame();
+    }
+
+    hideAllGameControls() {
+        if (this.blackjackControls) this.blackjackControls.style.display = 'none';
+        if (this.pokerControls) this.pokerControls.style.display = 'none';
+    }
+
     hideLoadingScreen() {
         if (this.loadingScreen) {
             this.loadingScreen.style.display = 'none';
@@ -188,24 +202,15 @@ export class UIManager {
     }
 
     updateUIForGameType(gameType) {
-        // Hide all game-specific UI elements
-        const blackjackElements = [
-            this.hitBtn, this.standBtn, this.newGameBtn,
-            this.superpositionBtn, this.entanglementBtn, this.measureBtn
-        ];
+        // Hide all game-specific UI elements first
+        this.hideAllGameControls();
         
-        const pokerElements = [
-            this.betBtn, this.callBtn, this.raiseBtn, this.foldBtn,
-            this.dealFlopBtn, this.dealTurnBtn, this.dealRiverBtn, this.showdownBtn
-        ];
-        
-        blackjackElements.forEach(el => {
-            if (el) el.style.display = gameType === 'blackjack' ? 'block' : 'none';
-        });
-        
-        pokerElements.forEach(el => {
-            if (el) el.style.display = gameType === 'poker' ? 'block' : 'none';
-        });
+        // Show controls for selected game
+        if (gameType === 'blackjack') {
+            if (this.blackjackControls) this.blackjackControls.style.display = 'flex';
+        } else if (gameType === 'poker') {
+            if (this.pokerControls) this.pokerControls.style.display = 'flex';
+        }
         
         // Update status display
         this.updateStatus(`Game type: ${gameType}`);
