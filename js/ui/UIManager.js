@@ -216,15 +216,18 @@ export class UIManager {
             return;
         }
 
-        // Check if gameManager is properly initialized
-        if (!this.gameManager.initialized) {
-            console.error("GameManager not fully initialized yet");
-            this.showError("Game is still initializing. Please wait a moment and try again.");
+        // Check if sceneManager is initialized before proceeding
+        if (!this.gameManager.sceneManager || !this.gameManager.sceneManager.initialized) {
+            console.error("SceneManager not initialized. Please wait for scene to load.");
+            this.showError("3D scene not ready yet. Please wait a moment and try again.");
             return;
         }
 
         // Attempt to set the game type
         try {
+            // Show loading indicator for game selection
+            this.updateStatus("Initializing " + (gameType === 'blackjack' ? 'Quantum Blackjack' : 'Quantum Texas Hold\'Em'));
+            
             const success = this.gameManager.setGameType(gameType);
             
             if (success) {
@@ -248,7 +251,7 @@ export class UIManager {
                 this.updateUIForGameType(gameType);
             } else {
                 console.error(`Failed to select game: ${gameType}`);
-                this.showError("Failed to start game. Please try again.");
+                this.showError("Failed to initialize game. Please try again.");
             }
         } catch (error) {
             console.error(`Error selecting game: ${gameType}`, error);
@@ -313,6 +316,13 @@ export class UIManager {
             errorDisplay.className = 'error-display';
             document.body.appendChild(errorDisplay);
         }
+        
+        // Set vaporwave style for error messages
+        errorDisplay.style.backgroundColor = 'rgba(0, 0, 51, 0.9)';
+        errorDisplay.style.color = '#ff00ff';  // Magenta
+        errorDisplay.style.border = '2px solid #00ffff'; // Cyan border
+        errorDisplay.style.boxShadow = '0 0 20px #ff00ff';
+        errorDisplay.style.fontFamily = "'VT323', monospace";
         
         errorDisplay.textContent = message;
         errorDisplay.style.display = 'block';

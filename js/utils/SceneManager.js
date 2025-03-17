@@ -26,7 +26,7 @@ export class SceneManager {
         }
 
         try {
-            // Create scene
+            // Create scene with vaporwave colors
             this.scene = new THREE.Scene();
             console.log("Scene created");
             
@@ -35,7 +35,9 @@ export class SceneManager {
                 return false;
             }
             
-            this.scene.background = new THREE.Color(0x000033);
+            // Create a gradient background for vaporwave feel
+            const bgTexture = this.createVaporwaveBackground();
+            this.scene.background = bgTexture;
 
             // Create camera
             this.camera = new THREE.PerspectiveCamera(
@@ -51,6 +53,7 @@ export class SceneManager {
                 return false;
             }
             
+            // Position camera for a good view of the table
             this.camera.position.set(0, 10, 5);
             this.camera.lookAt(0, 0, 0);
 
@@ -75,10 +78,10 @@ export class SceneManager {
                 // Create a message on the canvas that WebGL failed
                 const ctx = this.canvas.getContext('2d');
                 if (ctx) {
-                    ctx.fillStyle = 'black';
+                    ctx.fillStyle = '#000033'; // Dark blue background
                     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-                    ctx.fillStyle = 'red';
-                    ctx.font = '24px Arial';
+                    ctx.fillStyle = '#ff00ff'; // Magenta text
+                    ctx.font = '24px VT323, monospace';
                     ctx.textAlign = 'center';
                     ctx.fillText('WebGL not supported', this.canvas.width/2, this.canvas.height/2);
                     ctx.fillText('Please use a WebGL-compatible browser', this.canvas.width/2, this.canvas.height/2 + 30);
@@ -87,11 +90,13 @@ export class SceneManager {
                 return false;
             }
 
-            // Add lights
+            // Add vaporwave-styled lights
+            console.log("Adding lights with vaporwave colors");
             this.addLights();
             console.log("Lights added");
 
-            // Add table
+            // Add table with vaporwave styling
+            console.log("Adding table with vaporwave styling");
             const tableResult = await this.addTable();
             if (!tableResult) {
                 console.error("Failed to add table to scene");
@@ -103,9 +108,11 @@ export class SceneManager {
             this.setupMouseEvents();
             console.log("Mouse events set up");
 
+            // Initialize card objects array
+            this.cardObjects = [];
+            
             // Mark as initialized
             this.initialized = true;
-            this.cardObjects = [];
             console.log("SceneManager initialized successfully");
             
             // Start animation
@@ -163,14 +170,18 @@ export class SceneManager {
 
     async addTable() {
         try {
+            console.log("Creating vaporwave-style table");
+            
             // Create table surface geometry (a simple flat plane)
             const tableGeometry = new THREE.PlaneGeometry(20, 12);
             
-            // Create table material with felt texture
+            // Create table material with vaporwave look
             const tableMaterial = new THREE.MeshStandardMaterial({
-                color: 0x008800,
-                roughness: 0.8,
-                metalness: 0.2
+                color: 0x330066, // Deep purple
+                roughness: 0.7,
+                metalness: 0.3,
+                emissive: 0x000033, // Dark blue glow
+                emissiveIntensity: 0.2
             });
             
             // Create table mesh
@@ -182,15 +193,20 @@ export class SceneManager {
             // Add table to scene
             this.scene.add(this.tableObject);
             
-            // Add a rim around the table
+            // Add table grid lines (for vaporwave aesthetic)
+            await this.addTableGridLines();
+            
+            // Add a rim around the table with neon colors
             const rimGeometry = new THREE.BoxGeometry(20.5, 0.3, 0.5);
             const rimMaterial = new THREE.MeshStandardMaterial({
-                color: 0x4d2800,
-                roughness: 0.5,
-                metalness: 0.3
+                color: 0x000033, // Dark blue
+                roughness: 0.3,
+                metalness: 0.8,
+                emissive: 0x00ffff, // Cyan glow
+                emissiveIntensity: 0.8
             });
             
-            // Create the four sides of the rim
+            // Create the four sides of the rim with neon effect
             const topRim = new THREE.Mesh(rimGeometry, rimMaterial);
             topRim.position.set(0, 0.15, -6.25);
             this.scene.add(topRim);
@@ -208,12 +224,56 @@ export class SceneManager {
             rightRim.position.set(10.25, 0.15, 0);
             this.scene.add(rightRim);
             
-            console.log("Table created successfully");
+            console.log("Vaporwave table created successfully");
             return true;
         } catch (error) {
             console.error("Error creating table:", error);
             return false;
         }
+    }
+    
+    async addTableGridLines() {
+        // Add grid lines to the table for vaporwave aesthetic
+        const gridSize = 1; // Grid cell size
+        const tableWidth = 20;
+        const tableLength = 12;
+        
+        // Create materials for grid lines
+        const horizontalLineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ffff, // Cyan for horizontal lines
+            transparent: true,
+            opacity: 0.3
+        });
+        
+        const verticalLineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0xff00ff, // Magenta for vertical lines
+            transparent: true,
+            opacity: 0.3
+        });
+        
+        // Create horizontal grid lines
+        for (let z = -tableLength/2; z <= tableLength/2; z += gridSize) {
+            const points = [];
+            points.push(new THREE.Vector3(-tableWidth/2, 0.01, z));
+            points.push(new THREE.Vector3(tableWidth/2, 0.01, z));
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(geometry, horizontalLineMaterial);
+            this.scene.add(line);
+        }
+        
+        // Create vertical grid lines
+        for (let x = -tableWidth/2; x <= tableWidth/2; x += gridSize) {
+            const points = [];
+            points.push(new THREE.Vector3(x, 0.01, -tableLength/2));
+            points.push(new THREE.Vector3(x, 0.01, tableLength/2));
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(geometry, verticalLineMaterial);
+            this.scene.add(line);
+        }
+        
+        return true;
     }
 
     setupMouseEvents(onCardClick) {
@@ -264,36 +324,41 @@ export class SceneManager {
             return false;
         }
         
-        // Remove all card objects
-        if (this.cardObjects && this.cardObjects.length > 0) {
-            for (const cardObj of this.cardObjects) {
-                if (!cardObj) continue;
-                
-                // Remove from scene
-                this.scene.remove(cardObj);
-                
-                // Dispose of geometries and materials
-                if (cardObj.geometry) cardObj.geometry.dispose();
-                if (cardObj.material) {
-                    if (Array.isArray(cardObj.material)) {
-                        cardObj.material.forEach(material => {
-                            if (material) material.dispose();
-                        });
-                    } else if (cardObj.material) {
-                        cardObj.material.dispose();
+        if (!this.initialized) {
+            console.error("Cannot clear scene - SceneManager not initialized");
+            return false;
+        }
+
+        try {
+            // Remove all card objects
+            if (this.cardObjects && this.cardObjects.length > 0) {
+                for (const cardObj of this.cardObjects) {
+                    if (!cardObj) continue;
+                    
+                    // Remove from scene
+                    this.scene.remove(cardObj);
+                    
+                    // Dispose of geometries and materials
+                    if (cardObj.geometry) cardObj.geometry.dispose();
+                    if (cardObj.material) {
+                        if (Array.isArray(cardObj.material)) {
+                            cardObj.material.forEach(material => {
+                                if (material) material.dispose();
+                            });
+                        } else if (cardObj.material) {
+                            cardObj.material.dispose();
+                        }
                     }
                 }
             }
-        }
-        
-        // Clear the card objects array
-        this.cardObjects = [];
-        
-        // Keep the table and lights, but remove other objects
-        const objectsToKeep = [this.tableObject];
-        const objectsToRemove = [];
-        
-        if (this.scene) {
+            
+            // Clear the card objects array
+            this.cardObjects = [];
+            
+            // Keep the table and lights, but remove other objects
+            const objectsToKeep = [this.tableObject];
+            const objectsToRemove = [];
+            
             this.scene.traverse(object => {
                 if (object instanceof THREE.Mesh && !objectsToKeep.includes(object)) {
                     objectsToRemove.push(object);
@@ -318,10 +383,13 @@ export class SceneManager {
                     }
                 }
             }
+            
+            console.log("Scene cleared successfully");
+            return true;
+        } catch (error) {
+            console.error("Error clearing scene:", error);
+            return false;
         }
-        
-        console.log("Scene cleared successfully");
-        return true;
     }
 
     addCard(card, position, rotation, isPlayerCard = true) {
@@ -714,5 +782,51 @@ export class SceneManager {
         } catch (error) {
             console.error("Error updating entanglement lines:", error);
         }
+    }
+
+    createVaporwaveBackground() {
+        // Create a canvas for the background
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+        
+        // Create gradient from purple to blue
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#330066'); // Deep purple
+        gradient.addColorStop(1, '#000033'); // Dark blue
+        
+        // Fill background
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add grid lines for vaporwave aesthetic
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)'; // Cyan with transparency
+        ctx.lineWidth = 2;
+        
+        // Draw horizontal grid lines
+        const gridSize = 50;
+        for (let y = 0; y < canvas.height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        
+        // Draw vertical grid lines
+        for (let x = 0; x < canvas.width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        
+        // Create texture from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        
+        return texture;
     }
 } 

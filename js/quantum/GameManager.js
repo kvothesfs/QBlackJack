@@ -99,6 +99,11 @@ export class GameManager extends EventEmitter {
             return false;
         }
         
+        if (!this.sceneManager.initialized) {
+            console.error("Cannot set game type - SceneManager is not fully initialized");
+            return false;
+        }
+        
         this.gameType = type;
         
         try {
@@ -115,25 +120,33 @@ export class GameManager extends EventEmitter {
                 this.gameState = GameState.BETTING;
                 
                 if (!this.blackjackGame) {
-                    console.error("Blackjack game not initialized");
-                    return false;
+                    this.blackjackGame = new BlackjackGame(this);
                 }
                 
                 this.blackjackGame.initialize();
                 this.showTutorial('blackjack');
-                setTimeout(() => this.startNewGame(), 1000); // Start after tutorial begins
+                
+                // Start the game after a short delay to allow tutorial to display
+                setTimeout(() => {
+                    this.startNewGame();
+                }, 1000);
+                
             } else if (type === 'poker') {
                 console.log("Initializing Texas Hold'Em game");
                 this.gameState = GameState.POKER_BETTING;
                 
                 if (!this.pokerGame) {
-                    console.error("Poker game not initialized");
-                    return false;
+                    this.pokerGame = new TexasHoldEm(this);
                 }
                 
                 this.pokerGame.initialize();
                 this.showTutorial('poker');
-                setTimeout(() => this.startNewGame(), 1000); // Start after tutorial begins
+                
+                // Start the game after a short delay to allow tutorial to display
+                setTimeout(() => {
+                    this.startNewGame();
+                }, 1000);
+                
             } else {
                 console.error("Invalid game type:", type);
                 return false;

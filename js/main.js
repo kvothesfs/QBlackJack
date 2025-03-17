@@ -61,8 +61,21 @@ class QuantumBlackJack {
             console.log("Creating UIManager");
             this.uiManager = new UIManager(this.gameManager);
             
+            // Initialize SceneManager first, as it's a dependency for the game
+            console.log("Initializing SceneManager...");
+            const sceneInitialized = await this.sceneManager.initialize();
+            
+            if (!sceneInitialized) {
+                throw new Error("Failed to initialize SceneManager");
+            }
+            
             // Initialize GameManager with required dependencies
-            this.gameManager.initialize(this.sceneManager, this.assetLoader, this.uiManager);
+            console.log("Initializing GameManager with dependencies...");
+            const gameInitialized = this.gameManager.initialize(this.sceneManager, this.assetLoader, this.uiManager);
+            
+            if (!gameInitialized) {
+                throw new Error("Failed to initialize GameManager");
+            }
             
             // Connect managers
             this.gameManager.setUIManager(this.uiManager);
@@ -76,9 +89,19 @@ class QuantumBlackJack {
             document.addEventListener('visibilitychange', () => this.onVisibilityChange());
             
             // Enable game selection buttons after initialization
+            console.log("Enabling game selection buttons...");
             this.uiManager.enableGameSelection();
             
-            console.log("Game initialization complete");
+            console.log("Game initialization complete!");
+            
+            // Update loading text to indicate completion with vaporwave style
+            const loadingText = document.getElementById('loading-text');
+            if (loadingText) {
+                loadingText.textContent = "Quantum initialization complete!";
+                loadingText.style.color = "#00ffff";
+                loadingText.style.textShadow = "0 0 10px #ff00ff";
+            }
+            
         } catch (error) {
             console.error("Error in init:", error);
             this.showErrorMessage("Failed to initialize game: " + error.message);
