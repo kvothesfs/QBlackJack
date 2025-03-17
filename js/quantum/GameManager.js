@@ -14,7 +14,8 @@ export const GameState = {
     RESOLVING: 'resolving',
     GAME_OVER: 'gameOver',
     WAITING: 'waiting',
-    PLAYING: 'playing'
+    PLAYING: 'playing',
+    INITIALIZING: 'initializing'
 };
 
 export class GameManager extends EventEmitter {
@@ -35,47 +36,34 @@ export class GameManager extends EventEmitter {
     }
 
     initialize(sceneManager, assetLoader, uiManager) {
-        console.log("GameManager initializing with dependencies");
-        
-        // Validate dependencies
-        if (!sceneManager) {
-            console.error("SceneManager is required for initialization");
+        try {
+            console.log("Initializing GameManager");
+            
+            // Store references to managers
+            this.sceneManager = sceneManager;
+            this.assetLoader = assetLoader;
+            this.uiManager = uiManager;
+            
+            // Initialize in idle state
+            this.gameState = GameState.INITIALIZING;
+            
+            // Set initial quantum chip counts
+            this.hadamardChips = 3;
+            this.schrodingerChips = 2;
+            this.entanglementChips = 2;
+            
+            // Set up mouse events for card selection
+            this.setupMouseEvents();
+            
+            // Mark as initialized
+            this.initialized = true;
+            
+            console.log("GameManager initialized successfully");
+            return true;
+        } catch (error) {
+            console.error("Error initializing GameManager:", error);
             return false;
         }
-        
-        if (!assetLoader) {
-            console.error("AssetLoader is required for initialization");
-            return false;
-        }
-        
-        if (!uiManager) {
-            console.error("UIManager is required for initialization");
-            return false;
-        }
-        
-        this.sceneManager = sceneManager;
-        this.assetLoader = assetLoader;
-        this.uiManager = uiManager;
-        
-        // Set up mouse events for card selection
-        if (this.sceneManager) {
-            this.sceneManager.setupMouseEvents((card) => {
-                this.handleCardSelection(card);
-            });
-        } else {
-            console.error("SceneManager not available for mouse events");
-            return false;
-        }
-        
-        // Initialize game instances
-        this.blackjackGame = new BlackjackGame(this);
-        this.pokerGame = new TexasHoldEm(this);
-        
-        // Mark as initialized
-        this.initialized = true;
-        console.log("GameManager initialization complete");
-        
-        return true;
     }
 
     handleCardSelection(card) {
@@ -91,65 +79,122 @@ export class GameManager extends EventEmitter {
     }
 
     setGameType(type) {
-        console.log(`Setting game type to: ${type}`);
+        console.log(`Setting game type to ${type}`);
         
-        // Safety check for sceneManager
-        if (!this.sceneManager) {
-            console.error("Cannot set game type - SceneManager is not initialized");
+        // Validate type
+        if (type !== 'blackjack' && type !== 'poker') {
+            console.error(`Invalid game type: ${type}`);
             return false;
         }
-        
-        if (!this.sceneManager.initialized) {
-            console.error("Cannot set game type - SceneManager is not fully initialized");
-            return false;
-        }
-        
-        this.gameType = type;
         
         try {
-            // First clear the scene
-            console.log("Clearing scene before initializing game");
-            if (!this.sceneManager.clearScene()) {
-                console.error("Failed to clear scene");
+            // Check if sceneManager is initialized
+            if (!this.sceneManager || !this.sceneManager.initialized) {
+                console.error("Cannot set game type - SceneManager not initialized");
                 return false;
             }
             
-            // Initialize the selected game
+            // Set game type
+            this.gameType = type;
+            
+            // Initialize game based on type (lazy loading)
             if (type === 'blackjack') {
-                console.log("Initializing Blackjack game");
-                this.gameState = GameState.BETTING;
+                console.log("Loading Blackjack game...");
                 
+                // Only create a new instance if one doesn't exist
                 if (!this.blackjackGame) {
-                    this.blackjackGame = new BlackjackGame(this);
+                    // Dynamic import for the BlackjackGame class
+                    import('./BlackjackGame.js').then(module => {
+                        const BlackjackGame = module.BlackjackGame;
+                        this.blackjackGame = new BlackjackGame(this);
+                        
+                        // Initialize the game
+                        this.blackjackGame.initialize();
+                        
+                        // Set game state
+                        this.gameState = GameState.BETTING;
+                        
+                        console.log("Blackjack game loaded and initialized");
+                        
+                        // Show tutorial if not shown before
+                        if (!this.tutorialShown) {
+                            this.showTutorial('blackjack');
+                        } else {
+                            // Start new game
+                            this.startNewGame();
+                        }
+                    }).catch(error => {
+                        console.error("Error loading BlackjackGame:", error);
+                        return false;
+                    });
+                } else {
+                    // Just initialize the existing instance
+                    this.blackjackGame.initialize();
+                    
+                    // Set game state
+                    this.gameState = GameState.BETTING;
+                    
+                    console.log("Using existing Blackjack game instance");
+                    
+                    // Show tutorial or start game
+                    if (!this.tutorialShown) {
+                        this.showTutorial('blackjack');
+                    } else {
+                        // Start new game
+                        this.startNewGame();
+                    }
                 }
-                
-                this.blackjackGame.initialize();
-                this.showTutorial('blackjack');
-                
-                // Start the game after a short delay to allow tutorial to display
-                setTimeout(() => {
-                    this.startNewGame();
-                }, 1000);
-                
             } else if (type === 'poker') {
-                console.log("Initializing Texas Hold'Em game");
-                this.gameState = GameState.POKER_BETTING;
+                console.log("Loading Texas Hold'Em game...");
                 
+                // Only create a new instance if one doesn't exist
                 if (!this.pokerGame) {
-                    this.pokerGame = new TexasHoldEm(this);
+                    // Dynamic import for the TexasHoldEm class
+                    import('./TexasHoldEm.js').then(module => {
+                        const TexasHoldEm = module.TexasHoldEm;
+                        this.pokerGame = new TexasHoldEm(this);
+                        
+                        // Initialize the game
+                        this.pokerGame.initialize();
+                        
+                        // Set game state
+                        this.gameState = GameState.BETTING;
+                        
+                        console.log("Texas Hold'Em game loaded and initialized");
+                        
+                        // Show tutorial if not shown before
+                        if (!this.tutorialShown) {
+                            this.showTutorial('poker');
+                        } else {
+                            // Start new game
+                            this.startNewGame();
+                        }
+                    }).catch(error => {
+                        console.error("Error loading TexasHoldEm:", error);
+                        return false;
+                    });
+                } else {
+                    // Just initialize the existing instance
+                    this.pokerGame.initialize();
+                    
+                    // Set game state
+                    this.gameState = GameState.BETTING;
+                    
+                    console.log("Using existing Texas Hold'Em game instance");
+                    
+                    // Show tutorial or start game
+                    if (!this.tutorialShown) {
+                        this.showTutorial('poker');
+                    } else {
+                        // Start new game
+                        this.startNewGame();
+                    }
                 }
-                
-                this.pokerGame.initialize();
-                this.showTutorial('poker');
-                
-                // Start the game after a short delay to allow tutorial to display
-                setTimeout(() => {
-                    this.startNewGame();
-                }, 1000);
-                
-            } else {
-                console.error("Invalid game type:", type);
-                return false;
+            }
+            
+            // Update UI to reflect the current game type
+            if (this.uiManager) {
+                this.uiManager.updateUIForGameType(this.gameType);
             }
             
             return true;
@@ -229,14 +274,63 @@ export class GameManager extends EventEmitter {
         displayMessages();
     }
 
-    async startNewGame() {
-        if (!this.sceneManager) return;
+    startNewGame() {
+        console.log("Starting new game of type:", this.gameType);
         
-        this.tutorialShown = false;
-        if (this.gameType === 'blackjack') {
-            await this.blackjackGame.startNewGame();
-        } else if (this.gameType === 'poker') {
-            await this.pokerGame.startNewGame();
+        if (!this.initialized) {
+            console.error("Cannot start game - GameManager not initialized");
+            return false;
+        }
+        
+        try {
+            // Reset selection state
+            this.selectedCard = null;
+            this.entanglementMode = false;
+            this.entanglementCard1 = null;
+            
+            if (this.gameType === 'blackjack') {
+                if (!this.blackjackGame) {
+                    console.error("Blackjack game not initialized");
+                    return false;
+                }
+                
+                // Start new blackjack game
+                this.blackjackGame.startNewGame();
+                
+                // Update game state
+                this.gameState = GameState.PLAYING;
+                
+                // Update UI
+                if (this.uiManager) {
+                    this.uiManager.updateStatus("Blackjack game started. Your turn!");
+                }
+                
+                return true;
+            } else if (this.gameType === 'poker') {
+                if (!this.pokerGame) {
+                    console.error("Poker game not initialized");
+                    return false;
+                }
+                
+                // Start new poker game
+                this.pokerGame.startNewGame();
+                
+                // Update game state
+                this.gameState = GameState.PLAYING;
+                
+                // Update UI
+                if (this.uiManager) {
+                    this.uiManager.updateStatus("Texas Hold'Em game started. Place your bets!");
+                }
+                
+                return true;
+            } else {
+                console.error("Cannot start game - Invalid game type:", this.gameType);
+                return false;
+            }
+        } catch (error) {
+            console.error("Error starting new game:", error);
+            return false;
         }
     }
 
@@ -372,49 +466,121 @@ export class GameManager extends EventEmitter {
     }
 
     setupMouseEvents() {
-        this.sceneManager.setupMouseEvents((card) => {
-            this.handleCardClick(card);
-        });
-    }
-
-    handleCardClick(card) {
-        // Only allow card interaction during player's turn
-        if (this.gameState !== GameState.PLAYER_TURN) return;
-        
-        // If we're selecting cards for entanglement
-        if (this.chips.entanglement > 0 && this.cardForEntanglement) {
-            if (card !== this.cardForEntanglement && !card.collapsed && !card.entangledWith) {
-                this.entangleCards(this.cardForEntanglement, card);
-                this.cardForEntanglement = null;
-                this.deselectCard();
-            }
+        if (!this.sceneManager) {
+            console.error("Cannot setup mouse events - SceneManager not available");
             return;
         }
         
-        // Select/deselect card
-        if (this.selectedCard === card) {
-            this.deselectCard();
-        } else {
+        // Set up mouse event to handle card clicking
+        this.sceneManager.setupMouseEvents((card) => {
+            if (card) {
+                this.handleCardClick(card);
+            }
+        });
+        
+        console.log("Mouse events set up for card interaction");
+    }
+
+    handleCardClick(card) {
+        console.log("Card clicked:", card);
+        
+        // Only allow selection during player's turn
+        if (this.gameState !== GameState.PLAYING) {
+            console.log(`Cannot select cards in current state: ${this.gameState}`);
+            return;
+        }
+        
+        // Handle different selection modes
+        if (this.entanglementMode) {
+            // In entanglement mode, we're selecting the second card
+            if (this.entanglementCard1 === card) {
+                // Can't entangle a card with itself
+                if (this.uiManager) {
+                    this.uiManager.updateStatus("Cannot entangle a card with itself");
+                }
+                return;
+            }
+            
+            // Select this card as the second entanglement card
             this.selectCard(card);
+            
+            // Complete the entanglement
+            this.applyEntanglement();
+        } else {
+            // Normal card selection
+            this.selectCard(card);
+            
+            // Show available actions for this card
+            if (this.uiManager) {
+                let message = `Selected: ${card.toString()}`;
+                
+                if (card.isInSuperposition) {
+                    message += " (in superposition)";
+                }
+                
+                if (card.isEntangled) {
+                    message += " (entangled)";
+                }
+                
+                this.uiManager.updateStatus(message);
+            }
         }
     }
 
     selectCard(card) {
-        // Deselect previous card if any
-        if (this.selectedCard) {
-            this.selectedCard.mesh.position.y -= 0.2;
+        // Deselect previous card if there was one
+        if (this.selectedCard && this.selectedCard !== card) {
+            this.deselectCard();
         }
         
-        // Select new card
+        // Select the new card
         this.selectedCard = card;
-        card.mesh.position.y += 0.2; // Raise the card slightly
+        card.isSelected = true;
+        
+        // Highlight the card in the scene
+        if (card.mesh && card.mesh.material) {
+            // Apply selection effect to card
+            if (Array.isArray(card.mesh.material)) {
+                for (const mat of card.mesh.material) {
+                    // Don't override existing effects like superposition or entanglement
+                    if (!card.isInSuperposition && !card.isEntangled) {
+                        mat.emissive = new THREE.Color(1, 1, 0); // Yellow highlight
+                        mat.emissiveIntensity = 0.3;
+                    }
+                }
+            }
+        }
+        
+        console.log("Selected card:", card.toString());
     }
 
     deselectCard() {
-        if (this.selectedCard) {
-            this.selectedCard.mesh.position.y -= 0.2;
-            this.selectedCard = null;
+        if (!this.selectedCard) return;
+        
+        // Remove selection state
+        this.selectedCard.isSelected = false;
+        
+        // Remove highlight effect
+        if (this.selectedCard.mesh && this.selectedCard.mesh.material) {
+            if (Array.isArray(this.selectedCard.mesh.material)) {
+                for (const mat of this.selectedCard.mesh.material) {
+                    // Don't override existing effects
+                    if (!this.selectedCard.isInSuperposition && !this.selectedCard.isEntangled) {
+                        mat.emissive = new THREE.Color(0, 0, 0);
+                        mat.emissiveIntensity = 0;
+                    } else if (this.selectedCard.isInSuperposition) {
+                        mat.emissive = new THREE.Color(0, 1, 1); // Cyan for superposition
+                        mat.emissiveIntensity = 0.3;
+                    } else if (this.selectedCard.isEntangled) {
+                        mat.emissive = new THREE.Color(1, 0, 1); // Magenta for entanglement
+                        mat.emissiveIntensity = 0.3;
+                    }
+                }
+            }
         }
+        
+        console.log("Deselected card");
+        this.selectedCard = null;
     }
 
     startGame() {
@@ -1118,20 +1284,6 @@ export class GameManager extends EventEmitter {
                 this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
                 this.uiManager.updateHandValues(this.getHandValue(this.playerCards), this.getHandValue(this.dealerCards));
             }
-        }
-    }
-    
-    startNewGame() {
-        if (!this.gameType) return;
-        
-        this.gameState = GameState.PLAYING;
-        this.selectedCard = null;
-        this.entanglementTarget = null;
-        
-        if (this.gameType === 'blackjack') {
-            this.blackjackGame.startNewGame();
-        } else if (this.gameType === 'poker') {
-            this.pokerGame.startNewGame();
         }
     }
     

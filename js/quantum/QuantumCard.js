@@ -10,6 +10,10 @@ export class QuantumCard {
         this.isDealt = false;               // Whether the card has been dealt
         this.isSelected = false;            // Whether the card is currently selected
         
+        // State properties that can be accessed easily by GameManager
+        this.state1 = { value: this.value, suit: this.suit }; // Primary state
+        this.state2 = null;                                  // Secondary state (for superposition)
+        
         // Quantum properties
         this.isInSuperposition = false;     // Whether the card is in superposition
         this.isEntangled = false;           // Whether the card is entangled
@@ -161,6 +165,10 @@ export class QuantumCard {
         // Set equal amplitudes for both states (1/sqrt(2) ≈ 0.7071)
         this.amplitudes = [0.7071, 0.7071];
         
+        // Update state properties for easier access
+        this.state1 = this.superpositionStates[0];
+        this.state2 = this.superpositionStates[1];
+        
         // Mark card as in superposition
         this.isInSuperposition = true;
         
@@ -229,6 +237,10 @@ export class QuantumCard {
         const selectedState = this.superpositionStates[selectedIndex];
         this.value = selectedState.value;
         this.suit = selectedState.suit;
+        
+        // Update state properties
+        this.state1 = { value: this.value, suit: this.suit };
+        this.state2 = null;
         
         // Reset superposition properties
         this.isInSuperposition = false;
@@ -343,18 +355,13 @@ export class QuantumCard {
      * Entangle this card with another card
      */
     entangleWith(targetCard) {
-        if (!this.isInSuperposition) {
-            console.log("Card must be in superposition to entangle");
-            return false;
-        }
-        
-        if (!targetCard.isInSuperposition) {
-            console.log("Target card must be in superposition to entangle");
-            return false;
-        }
-        
         if (this.isEntangled || targetCard.isEntangled) {
             console.log("One of the cards is already entangled");
+            return false;
+        }
+        
+        if (!this.isInSuperposition || !targetCard.isInSuperposition) {
+            console.log("Both cards must be in superposition to entangle");
             return false;
         }
         
@@ -362,8 +369,8 @@ export class QuantumCard {
         
         // Set entanglement properties
         this.isEntangled = true;
-        this.entangledWith = targetCard;
         targetCard.isEntangled = true;
+        this.entangledWith = targetCard;
         targetCard.entangledWith = this;
         
         // Apply visual effect to card meshes if they exist
