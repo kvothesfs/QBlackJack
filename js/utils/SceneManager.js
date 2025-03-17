@@ -58,12 +58,29 @@ export class SceneManager {
     }
 
     setupRenderer() {
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        // Check if container is a canvas element
+        if (this.container instanceof HTMLCanvasElement) {
+            console.log("Container is a canvas element, using it directly");
+            // Use the existing canvas directly
+            this.renderer = new THREE.WebGLRenderer({ 
+                canvas: this.container,
+                antialias: true 
+            });
+        } else {
+            // Create a new canvas and append it to the container
+            console.log("Container is not a canvas, creating new renderer");
+            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+            this.container.appendChild(this.renderer.domElement);
+        }
+        
+        // Set renderer properties
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.container.appendChild(this.renderer.domElement);
+        
+        // Log WebGL context
+        console.log("WebGL renderer initialized:", this.renderer);
     }
 
     setupLights() {
