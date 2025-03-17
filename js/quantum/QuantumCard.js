@@ -488,119 +488,116 @@ export class QuantumCard {
 
     createCardTexture(cardState) {
         const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 720;
+        canvas.width = 256;
+        canvas.height = 384;
         const ctx = canvas.getContext('2d');
-        
-        // Card background
-        ctx.fillStyle = 'white';
+
+        // Background
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
+
         // Card border
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 10;
-        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-        
-        // Set color based on suit
-        const isRed = cardState.suit === 'hearts' || cardState.suit === 'diamonds';
-        ctx.fillStyle = isRed ? '#ff0000' : '#000000';
-        
-        // Draw value in top-left and bottom-right
-        ctx.font = 'bold 80px Arial';
-        ctx.textAlign = 'left';
-        
-        let valueText = cardState.value;
-        if (valueText === 'ace') valueText = 'A';
-        else if (valueText === 'king') valueText = 'K';
-        else if (valueText === 'queen') valueText = 'Q';
-        else if (valueText === 'jack') valueText = 'J';
-        
-        // Top-left value
-        ctx.fillText(valueText.toUpperCase(), 40, 100);
-        
-        // Bottom-right value (upside down)
-        ctx.save();
-        ctx.translate(canvas.width - 40, canvas.height - 40);
-        ctx.rotate(Math.PI);
-        ctx.fillText(valueText.toUpperCase(), 0, 0);
-        ctx.restore();
-        
-        // Draw suit symbol
-        let suitSymbol = '♠'; // Default spades
-        if (cardState.suit === 'hearts') suitSymbol = '♥';
-        else if (cardState.suit === 'diamonds') suitSymbol = '♦';
-        else if (cardState.suit === 'clubs') suitSymbol = '♣';
-        
-        // Center suit
-        ctx.font = 'bold 240px Arial';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+        // Card value and suit
+        ctx.fillStyle = cardState.suit === 'hearts' || cardState.suit === 'diamonds' ? '#ff0000' : '#000000';
+        ctx.font = 'bold 48px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(suitSymbol, canvas.width / 2, canvas.height / 2 + 50);
-        
-        // Draw small suit in top-left and bottom-right
-        ctx.font = 'bold 60px Arial';
-        ctx.textAlign = 'left';
-        
-        // Top-left suit
-        ctx.fillText(suitSymbol, 40, 160);
-        
-        // Bottom-right suit (upside down)
+        ctx.textBaseline = 'middle';
+
+        // Draw value and suit in top-left
+        const value = this.getDisplayValue(cardState.value);
+        const suit = this.getSuitSymbol(cardState.suit);
+        ctx.fillText(value, 40, 40);
+        ctx.fillText(suit, 40, 90);
+
+        // Draw value and suit in bottom-right (upside down)
         ctx.save();
-        ctx.translate(canvas.width - 40, canvas.height - 100);
+        ctx.translate(canvas.width, canvas.height);
         ctx.rotate(Math.PI);
-        ctx.fillText(suitSymbol, 0, 0);
+        ctx.fillText(value, 40, 40);
+        ctx.fillText(suit, 40, 90);
         ctx.restore();
-        
-        // Create texture from canvas
-        const texture = new THREE.Texture(canvas);
-        texture.needsUpdate = true;
-        return texture;
+
+        // Draw large suit in center
+        ctx.font = 'bold 120px Arial';
+        ctx.fillText(suit, canvas.width / 2, canvas.height / 2);
+
+        return new THREE.CanvasTexture(canvas);
     }
 
     createCardBackTexture() {
         const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 720;
+        canvas.width = 256;
+        canvas.height = 384;
         const ctx = canvas.getContext('2d');
-        
-        // Fill with gradient background
+
+        // Background gradient
         const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        gradient.addColorStop(0, '#4B0082'); // Indigo
-        gradient.addColorStop(0.5, '#9400D3'); // Violet
-        gradient.addColorStop(1, '#00CED1'); // Turquoise
+        gradient.addColorStop(0, '#4B0082'); // Deep purple
+        gradient.addColorStop(1, '#9400D3'); // Violet
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Add grid pattern
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+
+        // Card border
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+        // Grid pattern
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
         ctx.lineWidth = 2;
-        const gridSize = 40;
-        
-        // Horizontal grid lines
-        for (let y = 0; y < canvas.height; y += gridSize) {
+        for (let i = 0; i < canvas.width; i += 20) {
             ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(canvas.width, y);
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, canvas.height);
             ctx.stroke();
         }
-        
-        // Vertical grid lines
-        for (let x = 0; x < canvas.width; x += gridSize) {
+        for (let i = 0; i < canvas.height; i += 20) {
             ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, canvas.height);
+            ctx.moveTo(0, i);
+            ctx.lineTo(canvas.width, i);
             ctx.stroke();
         }
-        
-        // Add text
-        ctx.font = 'bold 60px Arial';
+
+        // Quantum symbol
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 80px Arial';
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#00FFFF'; // Cyan
-        ctx.fillText('QUANTUM', canvas.width / 2, canvas.height / 2 - 20);
-        ctx.fillText('BLACKJACK', canvas.width / 2, canvas.height / 2 + 60);
-        
-        // Create texture from canvas
-        const texture = new THREE.Texture(canvas);
-        texture.needsUpdate = true;
-        return texture;
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Ψ', canvas.width / 2, canvas.height / 2);
+
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    getDisplayValue(value) {
+        const valueMap = {
+            'ace': 'A',
+            'king': 'K',
+            'queen': 'Q',
+            'jack': 'J',
+            '10': '10',
+            '9': '9',
+            '8': '8',
+            '7': '7',
+            '6': '6',
+            '5': '5',
+            '4': '4',
+            '3': '3',
+            '2': '2'
+        };
+        return valueMap[value] || value;
+    }
+
+    getSuitSymbol(suit) {
+        const suitMap = {
+            'hearts': '♥',
+            'diamonds': '♦',
+            'clubs': '♣',
+            'spades': '♠'
+        };
+        return suitMap[suit] || suit;
     }
 } 

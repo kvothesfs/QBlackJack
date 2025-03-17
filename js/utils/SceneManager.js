@@ -48,39 +48,42 @@ export class SceneManager {
     }
 
     setupCamera() {
-        const width = this.container.clientWidth;
-        const height = this.container.clientHeight;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
         this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-        this.camera.position.set(0, 8, 7);
+        this.camera.position.set(0, 12, 10); // Higher and further back for better view
         this.camera.lookAt(0, 0, 0);
-        
         console.log("Camera position:", this.camera.position);
     }
 
     setupRenderer() {
-        // Check if container is a canvas element
+        // Check if container is already a canvas
         if (this.container instanceof HTMLCanvasElement) {
-            console.log("Container is a canvas element, using it directly");
-            // Use the existing canvas directly
             this.renderer = new THREE.WebGLRenderer({ 
-                canvas: this.container,
-                antialias: true 
+                antialias: true,
+                alpha: true,
+                canvas: this.container
             });
         } else {
-            // Create a new canvas and append it to the container
-            console.log("Container is not a canvas, creating new renderer");
-            this.renderer = new THREE.WebGLRenderer({ antialias: true });
-            this.container.appendChild(this.renderer.domElement);
+            // Create new canvas if container is not a canvas
+            const canvas = document.createElement('canvas');
+            this.container.appendChild(canvas);
+            this.renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: true,
+                canvas: canvas
+            });
         }
-        
-        // Set renderer properties
+
+        // Set renderer size to window size
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
-        // Log WebGL context
-        console.log("WebGL renderer initialized:", this.renderer);
+        // Force a render to check if WebGL is working
+        this.renderer.render(this.scene, this.camera);
+        console.log("Initial render complete - WebGL context:", this.renderer.getContext());
     }
 
     setupLights() {
@@ -125,58 +128,38 @@ export class SceneManager {
     }
 
     setupTable() {
-        // Create a vaporwave-themed table
-        const tableGeometry = new THREE.BoxGeometry(15, 0.2, 8);
+        // Create table geometry
+        const tableGeometry = new THREE.PlaneGeometry(20, 20);
         const tableMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x0a4b40, // Dark teal
-            roughness: 0.7,
-            metalness: 0.3,
-            map: this.assetLoader && typeof this.assetLoader.getTexture === 'function' 
-                ? this.assetLoader.getTexture('table') 
-                : null
+            color: 0x006400, // Dark green
+            roughness: 0.8,
+            metalness: 0.2
         });
         this.table = new THREE.Mesh(tableGeometry, tableMaterial);
+        this.table.rotation.x = -Math.PI / 2;
+        this.table.position.y = -0.1;
         this.table.receiveShadow = true;
-        this.table.position.set(0, -0.1, 0);
         this.scene.add(this.table);
-        
-        // Add table border with gradient color
-        const borderGeometry = new THREE.BoxGeometry(15.5, 0.4, 8.5);
+
+        // Add table border
+        const borderGeometry = new THREE.BoxGeometry(22, 0.5, 22);
         const borderMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x9400D3, // Violet
-            roughness: 0.5,
-            metalness: 0.5,
-            emissive: 0x450066,
-            emissiveIntensity: 0.2
+            color: 0x8B4513, // Brown
+            roughness: 0.7,
+            metalness: 0.3
         });
-        const tableBorder = new THREE.Mesh(borderGeometry, borderMaterial);
-        tableBorder.position.set(0, -0.2, 0);
-        tableBorder.receiveShadow = true;
-        this.scene.add(tableBorder);
-        
-        // Add grid lines on the table
-        this.addGridLines();
-    }
-    
-    addGridLines() {
-        // Create a grid with cyan lines
-        const gridSize = 30;
-        const gridDivisions = 20;
-        const gridColor = 0x00FFFF; // Cyan
-        
-        const grid = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
-        grid.position.y = 0.001; // Just above the table
-        grid.material.transparent = true;
-        grid.material.opacity = 0.15;
-        this.scene.add(grid);
-        
-        // Add a second grid rotated for vaporwave perspective effect
-        const grid2 = new THREE.GridHelper(gridSize, gridDivisions, 0xFF00FF, 0xFF00FF); // Magenta
-        grid2.position.y = 0.002; // Just above the first grid
-        grid2.rotation.z = Math.PI / 4; // 45 degrees
-        grid2.material.transparent = true;
-        grid2.material.opacity = 0.1;
-        this.scene.add(grid2);
+        const border = new THREE.Mesh(borderGeometry, borderMaterial);
+        border.position.y = 0.2;
+        border.castShadow = true;
+        this.scene.add(border);
+
+        // Add felt texture
+        const feltTexture = new THREE.TextureLoader().load('assets/textures/felt.jpg');
+        feltTexture.wrapS = THREE.RepeatWrapping;
+        feltTexture.wrapT = THREE.RepeatWrapping;
+        feltTexture.repeat.set(4, 4);
+        this.table.material.map = feltTexture;
+        this.table.material.needsUpdate = true;
     }
 
     setupOrbitControls() {
@@ -234,22 +217,39 @@ export class SceneManager {
     }
 
     addCard(card, position, isDealer = false) {
-        const group = isDealer ? this.dealerCardsGroup : this.playerCardsGroup;
-        group.add(card.mesh);
-        
-        // Log card position for debugging
-        console.log(`Adding ${isDealer ? 'dealer' : 'player'} card at position:`, position);
-        
-        // Position the card within its group
+        if (!card || !card.mesh) {
+            console.error("Invalid card object:", card);
+            return;
+        }
+
+        // Set position
         card.mesh.position.copy(position);
         
-        // Add to interactive objects if player card
-        if (!isDealer) {
-            this.interactiveObjects.push(card.mesh);
-            card.mesh.userData.card = card;
+        // Adjust position based on whether it's dealer's card
+        if (isDealer) {
+            card.mesh.position.z = -2; // Dealer's cards are further back
+        } else {
+            card.mesh.position.z = 2; // Player's cards are closer
         }
+
+        // Add to scene
+        this.scene.add(card.mesh);
         
-        return card.mesh;
+        // Add to interactive objects for raycasting
+        this.interactiveObjects.push(card.mesh);
+        
+        // Store card reference in userData
+        card.mesh.userData.card = card;
+        
+        // Enable shadows
+        card.mesh.castShadow = true;
+        card.mesh.receiveShadow = true;
+        
+        console.log("Added card to scene:", {
+            position: card.mesh.position,
+            isDealer: isDealer,
+            card: card
+        });
     }
 
     removeCard(cardMesh) {
