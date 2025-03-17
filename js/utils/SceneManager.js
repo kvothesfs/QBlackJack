@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export class SceneManager {
-    constructor(container) {
+    constructor(container, assetLoader) {
         this.container = container;
+        this.assetLoader = assetLoader;
         this.init();
     }
 
@@ -109,7 +110,9 @@ export class SceneManager {
             color: 0x0a4b40, // Dark teal
             roughness: 0.7,
             metalness: 0.3,
-            map: this.assetLoader.getTexture('table')
+            map: this.assetLoader && typeof this.assetLoader.getTexture === 'function' 
+                ? this.assetLoader.getTexture('table') 
+                : null
         });
         this.table = new THREE.Mesh(tableGeometry, tableMaterial);
         this.table.receiveShadow = true;
@@ -375,5 +378,33 @@ export class SceneManager {
                 this.entanglementParticles.geometry.attributes.position.needsUpdate = true;
             }
         }
+    }
+
+    update(deltaTime) {
+        // Update orbit controls
+        if (this.controls) {
+            this.controls.update();
+        }
+        
+        // Rotate the light for vaporwave effect
+        if (this.rotatingLight) {
+            const time = Date.now() * 0.001;
+            this.rotatingLight.position.x = Math.sin(time * 0.5) * 5;
+            this.rotatingLight.position.z = Math.cos(time * 0.5) * 5;
+            
+            // Slowly cycle the color
+            const hue = (time * 0.1) % 1;
+            const color = new THREE.Color().setHSL(hue, 1, 0.5);
+            this.rotatingLight.color = color;
+        }
+        
+        // Render the scene
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    resize(width, height) {
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
     }
 } 
