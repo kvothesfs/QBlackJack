@@ -56,13 +56,13 @@ class QuantumBlackJack {
             this.sceneManager = new SceneManager(this.canvas, this.assetLoader);
             
             console.log("Creating GameManager");
-            this.gameManager = new GameManager(this.sceneManager, this.soundManager, this.assetLoader);
+            this.gameManager = new GameManager();
             
             console.log("Creating UIManager");
-            this.uiManager = new UIManager(this.gameManager, this.soundManager);
+            this.uiManager = new UIManager(this.gameManager);
             
-            console.log("Creating TutorialManager");
-            this.tutorialManager = new TutorialManager(this.uiManager);
+            // Initialize GameManager with required dependencies
+            this.gameManager.initialize(this.sceneManager, this.assetLoader, this.uiManager);
             
             // Connect managers
             this.gameManager.setUIManager(this.uiManager);
@@ -70,9 +70,6 @@ class QuantumBlackJack {
             // Start the render loop
             this.isInitialized = true;
             this.animate();
-            
-            // Don't start background music until user interaction
-            // this.soundManager.startBackgroundMusic();
             
             // Set up event listeners for resize and visibility changes
             window.addEventListener('resize', () => this.onWindowResize());
@@ -98,6 +95,12 @@ class QuantumBlackJack {
                 const loadingBar = document.getElementById('loading-bar');
                 const loadingText = document.getElementById('loading-text');
                 const startButton = document.getElementById('start-game-btn');
+                const gameSelection = document.getElementById('game-selection');
+                
+                // Initially hide game selection
+                if (gameSelection) {
+                    gameSelection.style.display = 'none';
+                }
                 
                 if (!loadingBar) {
                     console.warn("Loading bar element not found");
@@ -120,16 +123,11 @@ class QuantumBlackJack {
                         loadingText.textContent = `Loading assets: ${progress}%`;
                     }
                     
-                    // If the UIManager is initialized, use it to update loading progress
-                    if (this.uiManager) {
-                        this.uiManager.updateLoadingProgress(progress);
-                    }
-                    
                     if (progress >= 100) {
                         clearInterval(interval);
                         console.log("Loading progress complete");
                         
-                        // Show the start button directly
+                        // Show the start button
                         if (loadingText) {
                             loadingText.textContent = 'Loading complete! Click "START GAME" to begin.';
                         }
@@ -138,17 +136,27 @@ class QuantumBlackJack {
                             console.log("Displaying start button");
                             startButton.style.display = 'block';
                             startButton.style.margin = '30px auto';
+                            
+                            // Add click handler for start button
+                            startButton.onclick = () => {
+                                // Hide loading screen
+                                document.getElementById('loading-screen').style.display = 'none';
+                                // Show game selection
+                                if (gameSelection) {
+                                    gameSelection.style.display = 'flex';
+                                }
+                            };
                         } else {
                             console.warn("Start button element not found");
                         }
                         
-                        setTimeout(resolve, 500); // Add a small delay after reaching 100%
+                        setTimeout(resolve, 500);
                     }
                 }, 100);
             } catch (error) {
                 console.error("Error in loadAssets:", error);
                 this.showErrorMessage("Failed to load assets: " + error.message);
-                resolve(); // Resolve anyway to prevent hanging
+                resolve();
             }
         });
     }

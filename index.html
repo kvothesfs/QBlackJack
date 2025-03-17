@@ -19,65 +19,67 @@
 <body>
     <!-- Loading Screen -->
     <div id="loading-screen">
-        <div class="loading-content">
-            <h1>Quantum Card Games</h1>
-            <div class="loading-bar-container">
-                <div id="loading-bar"></div>
-            </div>
-            <p id="loading-text">Loading assets: 0%</p>
-            <button id="start-game-btn" class="start-button">Start Game</button>
+        <h1 id="loading-title">Quantum Card Games</h1>
+        <div id="loading-bar-container">
+            <div id="loading-bar"></div>
         </div>
+        <div id="loading-text">Loading assets...</div>
+        <button id="start-game-btn">START GAME</button>
     </div>
 
     <!-- Game Selection -->
-    <div id="game-selection" class="game-selection" style="display: none;">
-        <h2>Select a Game</h2>
-        <div class="game-buttons">
-            <button id="blackjack-btn" class="game-button">Quantum Blackjack</button>
-            <button id="poker-btn" class="game-button">Quantum Texas Hold Em</button>
-        </div>
+    <div id="game-selection" class="game-selection">
+        <button class="game-btn" id="blackjack-btn">Quantum Blackjack</button>
+        <button class="game-btn" id="poker-btn">Quantum Texas Hold Em</button>
     </div>
 
     <!-- Game Container -->
-    <div id="game-container" style="display: none;">
-        <!-- Canvas for 3D rendering -->
+    <div id="game-container" class="game-container">
         <canvas id="game-canvas"></canvas>
-
-        <!-- UI Container -->
-        <div id="ui-container">
-            <!-- Status Display -->
-            <div id="status-display"></div>
-
+        
+        <!-- Game Controls -->
+        <div class="game-controls">
             <!-- Blackjack Controls -->
-            <div id="blackjack-controls" class="game-controls">
-                <button id="hit-btn" class="game-button">Hit</button>
-                <button id="stand-btn" class="game-button">Stand</button>
-                <button id="new-game-btn" class="game-button">New Game</button>
-                <button id="superposition-btn" class="game-button">Superposition</button>
-                <button id="entanglement-btn" class="game-button">Entangle</button>
-                <button id="measure-btn" class="game-button">Measure</button>
+            <div id="blackjack-controls">
+                <button id="hit-btn">Hit</button>
+                <button id="stand-btn">Stand</button>
+                <button id="double-btn">Double</button>
+                <button id="split-btn">Split</button>
             </div>
-
+            
             <!-- Poker Controls -->
-            <div id="poker-controls" class="game-controls">
-                <button id="bet-btn" class="game-button">Bet</button>
-                <button id="call-btn" class="game-button">Call</button>
-                <button id="raise-btn" class="game-button">Raise</button>
-                <button id="fold-btn" class="game-button">Fold</button>
-                <button id="deal-flop-btn" class="game-button">Deal Flop</button>
-                <button id="deal-turn-btn" class="game-button">Deal Turn</button>
-                <button id="deal-river-btn" class="game-button">Deal River</button>
-                <button id="showdown-btn" class="game-button">Showdown</button>
-            </div>
-
-            <!-- Game Info -->
-            <div id="game-info">
-                <div id="player-value"></div>
-                <div id="dealer-value"></div>
-                <div id="pot-amount"></div>
-                <div id="player-chips"></div>
+            <div id="poker-controls">
+                <button id="bet-btn">Bet</button>
+                <button id="call-btn">Call</button>
+                <button id="raise-btn">Raise</button>
+                <button id="fold-btn">Fold</button>
+                <button id="deal-flop-btn">Deal Flop</button>
+                <button id="deal-turn-btn">Deal Turn</button>
+                <button id="deal-river-btn">Deal River</button>
             </div>
         </div>
+
+        <!-- Quantum Controls -->
+        <div class="quantum-controls">
+            <button id="hadamard-btn">Hadamard (Superposition)</button>
+            <button id="schrodinger-btn">Schrödinger (Measure)</button>
+            <button id="entanglement-btn">Entanglement</button>
+        </div>
+
+        <!-- Game Info -->
+        <div class="game-info">
+            <div id="player-value"></div>
+            <div id="dealer-value"></div>
+            <div id="pot-amount"></div>
+            <div id="player-chips"></div>
+            <div id="quantum-counts"></div>
+        </div>
+
+        <!-- Status Display -->
+        <div id="status-display" class="status-display"></div>
+
+        <!-- Tutorial Display -->
+        <div id="tutorial-display" class="tutorial-display"></div>
     </div>
 
     <button id="sound-toggle" class="sound-toggle">
