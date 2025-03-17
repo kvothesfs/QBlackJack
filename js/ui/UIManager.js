@@ -2,6 +2,7 @@ import { GameState } from '../quantum/GameManager.js';
 
 export class UIManager {
     constructor(gameManager) {
+        console.log("Creating UIManager");
         this.gameManager = gameManager;
         this.setupUI();
         this.setupEventListeners();
@@ -113,117 +114,251 @@ export class UIManager {
     }
 
     setupEventListeners() {
+        console.log("Setting up UI event listeners");
+        
         // Game selection
-        const blackjackBtn = document.querySelector('#game-selection .game-btn:nth-child(1)');
-        const pokerBtn = document.querySelector('#game-selection .game-btn:nth-child(2)');
+        const blackjackBtn = document.getElementById('blackjack-btn');
+        const pokerBtn = document.getElementById('poker-btn');
         
-        blackjackBtn.addEventListener('click', () => this.selectGame('blackjack'));
-        pokerBtn.addEventListener('click', () => this.selectGame('poker'));
-        
+        if (blackjackBtn && pokerBtn) {
+            blackjackBtn.addEventListener('click', () => {
+                console.log("Blackjack button clicked");
+                this.selectGame('blackjack');
+            });
+            
+            pokerBtn.addEventListener('click', () => {
+                console.log("Poker button clicked");
+                this.selectGame('poker');
+            });
+        } else {
+            console.error("Game selection buttons not found in the DOM");
+        }
+
         // Blackjack controls
-        document.getElementById('hit-btn').addEventListener('click', () => this.gameManager.playerHit());
-        document.getElementById('stand-btn').addEventListener('click', () => this.gameManager.playerStand());
-        document.getElementById('double-btn').addEventListener('click', () => this.gameManager.playerDouble());
-        document.getElementById('split-btn').addEventListener('click', () => this.gameManager.playerSplit());
+        this.addEventListenerSafely('hit-btn', 'click', () => this.gameManager.playerHit());
+        this.addEventListenerSafely('stand-btn', 'click', () => this.gameManager.playerStand());
+        this.addEventListenerSafely('double-btn', 'click', () => this.gameManager.playerDouble());
+        this.addEventListenerSafely('split-btn', 'click', () => this.gameManager.playerSplit());
         
         // Poker controls
-        document.getElementById('bet-btn').addEventListener('click', () => this.gameManager.pokerPlaceBet(10));
-        document.getElementById('call-btn').addEventListener('click', () => this.gameManager.pokerCall());
-        document.getElementById('raise-btn').addEventListener('click', () => this.gameManager.pokerRaise(20));
-        document.getElementById('fold-btn').addEventListener('click', () => this.gameManager.pokerFold());
-        document.getElementById('deal-flop-btn').addEventListener('click', () => this.gameManager.pokerDealFlop());
-        document.getElementById('deal-turn-btn').addEventListener('click', () => this.gameManager.pokerDealTurn());
-        document.getElementById('deal-river-btn').addEventListener('click', () => this.gameManager.pokerDealRiver());
+        this.addEventListenerSafely('bet-btn', 'click', () => this.gameManager.pokerBet(10));
+        this.addEventListenerSafely('call-btn', 'click', () => this.gameManager.pokerCall());
+        this.addEventListenerSafely('raise-btn', 'click', () => this.gameManager.pokerRaise(20));
+        this.addEventListenerSafely('fold-btn', 'click', () => this.gameManager.pokerFold());
+        this.addEventListenerSafely('deal-flop-btn', 'click', () => this.gameManager.pokerDealFlop());
+        this.addEventListenerSafely('deal-turn-btn', 'click', () => this.gameManager.pokerDealTurn());
+        this.addEventListenerSafely('deal-river-btn', 'click', () => this.gameManager.pokerDealRiver());
         
         // Quantum controls
-        document.getElementById('hadamard-btn').addEventListener('click', () => this.gameManager.applySuperposition(this.gameManager.selectedCard));
-        document.getElementById('schrodinger-btn').addEventListener('click', () => this.gameManager.measureCard(this.gameManager.selectedCard));
-        document.getElementById('entanglement-btn').addEventListener('click', () => this.gameManager.applyEntanglement(this.gameManager.selectedCard, this.gameManager.entanglementTarget));
+        this.addEventListenerSafely('hadamard-btn', 'click', () => {
+            if (this.gameManager.selectedCard) {
+                this.gameManager.applySuperposition(this.gameManager.selectedCard);
+            } else {
+                this.updateStatus("Select a card first to apply superposition");
+            }
+        });
+        
+        this.addEventListenerSafely('schrodinger-btn', 'click', () => {
+            if (this.gameManager.selectedCard) {
+                this.gameManager.measureCard(this.gameManager.selectedCard);
+            } else {
+                this.updateStatus("Select a card first to measure");
+            }
+        });
+        
+        this.addEventListenerSafely('entanglement-btn', 'click', () => {
+            if (this.gameManager.selectedCard && this.gameManager.entanglementTarget) {
+                this.gameManager.applyEntanglement(this.gameManager.selectedCard, this.gameManager.entanglementTarget);
+            } else {
+                this.updateStatus("Select two cards first to entangle them");
+            }
+        });
+        
+        // Sound toggle
+        this.addEventListenerSafely('sound-toggle', 'click', () => {
+            const icon = document.querySelector('.sound-icon');
+            if (icon) {
+                if (icon.textContent === '🔊') {
+                    icon.textContent = '🔇';
+                    // Mute sound
+                    if (this.gameManager && this.gameManager.soundManager) {
+                        this.gameManager.soundManager.mute();
+                    }
+                } else {
+                    icon.textContent = '🔊';
+                    // Unmute sound
+                    if (this.gameManager && this.gameManager.soundManager) {
+                        this.gameManager.soundManager.unmute();
+                    }
+                }
+            }
+        });
+    }
+
+    // Helper method to safely add event listeners
+    addEventListenerSafely(elementId, eventType, callback) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.addEventListener(eventType, callback);
+        } else {
+            console.warn(`Element with ID '${elementId}' not found for event listener`);
+        }
     }
 
     selectGame(gameType) {
-        if (!this.gameManager.isInitialized) {
-            console.error("Game not initialized yet. Please wait.");
+        console.log(`Selecting game: ${gameType}`);
+        
+        if (!this.gameManager) {
+            console.error("GameManager not initialized in UIManager");
+            this.showError("Game initialization error. Please refresh the page.");
             return;
         }
 
-        // Hide game selection
-        document.getElementById('game-selection').style.display = 'none';
+        // Attempt to set the game type
+        const success = this.gameManager.setGameType(gameType);
         
-        // Show game container
-        document.getElementById('game-container').style.display = 'block';
-        
-        // Set game type
-        this.gameManager.setGameType(gameType);
-        
-        // Update UI for game type
-        this.updateUIForGameType(gameType);
+        if (success) {
+            console.log(`Successfully selected game: ${gameType}`);
+            
+            // Hide game selection
+            const gameSelection = document.getElementById('game-selection');
+            if (gameSelection) {
+                gameSelection.style.display = 'none';
+            }
+            
+            // Show game container
+            const gameContainer = document.getElementById('game-container');
+            if (gameContainer) {
+                gameContainer.style.display = 'block';
+            }
+            
+            // Update UI for game type
+            this.updateUIForGameType(gameType);
+        } else {
+            console.error(`Failed to select game: ${gameType}`);
+            this.showError("Failed to start game. Please try again.");
+        }
     }
 
-    // Add method to enable game selection buttons
     enableGameSelection() {
-        const buttons = document.querySelectorAll('#game-selection .game-btn');
-        buttons.forEach(button => button.disabled = false);
+        console.log("Enabling game selection buttons");
+        const blackjackBtn = document.getElementById('blackjack-btn');
+        const pokerBtn = document.getElementById('poker-btn');
+        
+        if (blackjackBtn && pokerBtn) {
+            blackjackBtn.disabled = false;
+            pokerBtn.disabled = false;
+        } else {
+            console.error("Game selection buttons not found");
+        }
     }
 
     updateUIForGameType(gameType) {
-        // Show/hide appropriate controls
-        document.getElementById('blackjack-controls').style.display = gameType === 'blackjack' ? 'block' : 'none';
-        document.getElementById('poker-controls').style.display = gameType === 'poker' ? 'block' : 'none';
+        console.log(`Updating UI for game type: ${gameType}`);
         
-        // Update status
-        this.updateStatus(`Welcome to Quantum ${gameType === 'blackjack' ? 'Blackjack' : 'Texas Hold Em'}!`);
-    }
-
-    showTutorial(messages) {
-        const tutorialDisplay = document.getElementById('tutorial-display');
-        tutorialDisplay.innerHTML = '';
+        // Hide all game controls first
+        const blackjackControls = document.getElementById('blackjack-controls');
+        const pokerControls = document.getElementById('poker-controls');
         
-        messages.forEach((message, index) => {
-            const messageElement = document.createElement('div');
-            messageElement.className = 'tutorial-message';
-            messageElement.textContent = message;
-            tutorialDisplay.appendChild(messageElement);
+        if (blackjackControls && pokerControls) {
+            blackjackControls.style.display = 'none';
+            pokerControls.style.display = 'none';
             
-            // Add delay between messages
-            setTimeout(() => {
-                messageElement.style.opacity = '1';
-            }, index * 1000);
-        });
-        
-        // Hide tutorial after all messages are shown
-        setTimeout(() => {
-            tutorialDisplay.style.opacity = '0';
-            setTimeout(() => {
-                tutorialDisplay.innerHTML = '';
-            }, 500);
-        }, messages.length * 1000 + 2000);
+            // Show controls for the selected game
+            if (gameType === 'blackjack') {
+                blackjackControls.style.display = 'flex';
+                this.updateStatus("Welcome to Quantum Blackjack! Select a card to begin.");
+            } else if (gameType === 'poker') {
+                pokerControls.style.display = 'flex';
+                this.updateStatus("Welcome to Quantum Texas Hold'Em! Place your bets to begin.");
+            }
+        } else {
+            console.error("Game controls not found in the DOM");
+        }
     }
 
     updateStatus(message) {
         const statusDisplay = document.getElementById('status-display');
-        statusDisplay.textContent = message;
+        if (statusDisplay) {
+            statusDisplay.textContent = message;
+        }
     }
 
-    updateHandValues(playerValue, dealerValue) {
-        document.getElementById('player-value').textContent = `Player: ${playerValue}`;
-        document.getElementById('dealer-value').textContent = `Dealer: ${dealerValue}`;
+    showError(message) {
+        console.error(message);
+        
+        // Create error display if it doesn't exist
+        let errorDisplay = document.getElementById('error-display');
+        
+        if (!errorDisplay) {
+            errorDisplay = document.createElement('div');
+            errorDisplay.id = 'error-display';
+            errorDisplay.className = 'error-display';
+            document.body.appendChild(errorDisplay);
+        }
+        
+        errorDisplay.textContent = message;
+        errorDisplay.style.display = 'block';
+        
+        // Hide after 5 seconds
+        setTimeout(() => {
+            errorDisplay.style.display = 'none';
+        }, 5000);
+    }
+
+    updatePlayerValue(value) {
+        const playerValue = document.getElementById('player-value');
+        if (playerValue) {
+            playerValue.textContent = `Player: ${value}`;
+        }
+    }
+
+    updateDealerValue(value) {
+        const dealerValue = document.getElementById('dealer-value');
+        if (dealerValue) {
+            dealerValue.textContent = `Dealer: ${value}`;
+        }
+    }
+
+    updatePotAmount(amount) {
+        const potAmount = document.getElementById('pot-amount');
+        if (potAmount) {
+            potAmount.textContent = `Pot: ${amount}`;
+        }
+    }
+
+    updatePlayerChips(chips) {
+        const playerChips = document.getElementById('player-chips');
+        if (playerChips) {
+            playerChips.textContent = `Chips: ${chips}`;
+        }
     }
 
     updateQuantumCounts(superposed, entangled) {
-        document.getElementById('quantum-counts').textContent = 
-            `Superposed: ${superposed} | Entangled: ${entangled}`;
+        const quantumCounts = document.getElementById('quantum-counts');
+        if (quantumCounts) {
+            quantumCounts.textContent = `Superposed: ${superposed} | Entangled: ${entangled}`;
+        }
     }
 
-    showWin() {
-        this.updateStatus('You win!');
+    showWin(message = "You Win!") {
+        this.updateStatus(message);
+        this.playSound('win');
     }
 
-    showLose() {
-        this.updateStatus('Dealer wins!');
+    showLose(message = "You Lose!") {
+        this.updateStatus(message);
+        this.playSound('lose');
     }
 
-    showTie() {
-        this.updateStatus('Push! It\'s a tie!');
+    showTie(message = "It's a Tie!") {
+        this.updateStatus(message);
+        this.playSound('tie');
+    }
+
+    playSound(soundName) {
+        if (this.gameManager && this.gameManager.soundManager) {
+            this.gameManager.soundManager.play(soundName);
+        }
     }
 } 

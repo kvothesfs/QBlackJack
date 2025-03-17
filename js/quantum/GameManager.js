@@ -27,8 +27,7 @@ export class GameManager extends EventEmitter {
         this.gameState = null;
         this.selectedCard = null;
         this.entanglementTarget = null;
-        this.tutorialShown = false;
-        this.isInitialized = false;
+        this.initialized = false;
         
         // Initialize game instances
         this.blackjackGame = new BlackjackGame(this);
@@ -36,15 +35,21 @@ export class GameManager extends EventEmitter {
     }
 
     initialize(sceneManager, assetLoader, uiManager) {
+        console.log("GameManager initializing with dependencies");
         this.sceneManager = sceneManager;
         this.assetLoader = assetLoader;
         this.uiManager = uiManager;
-        this.isInitialized = true;
         
         // Set up mouse events for card selection
-        this.sceneManager.setupMouseEvents((card) => {
-            this.handleCardSelection(card);
-        });
+        if (this.sceneManager) {
+            this.sceneManager.setupMouseEvents((card) => {
+                this.handleCardSelection(card);
+            });
+            this.initialized = true;
+            console.log("GameManager successfully initialized");
+        } else {
+            console.error("Failed to initialize GameManager - SceneManager is null");
+        }
     }
 
     handleCardSelection(card) {
@@ -60,63 +65,114 @@ export class GameManager extends EventEmitter {
     }
 
     setGameType(type) {
-        if (!this.isInitialized) {
-            console.error("GameManager not initialized. Please wait for initialization to complete.");
-            return;
+        console.log(`Setting game type to: ${type}`);
+        
+        // Safety check for sceneManager
+        if (!this.sceneManager) {
+            console.error("Cannot set game type - SceneManager is not initialized");
+            return false;
+        }
+        
+        if (!this.initialized) {
+            console.error("GameManager not fully initialized yet");
+            return false;
         }
 
         this.gameType = type;
-        this.gameState = type === 'blackjack' ? GameState.BETTING : GameState.POKER_BETTING;
         
-        // Only clear scene if sceneManager is initialized
-        if (this.sceneManager) {
+        // First clear the scene
+        try {
+            console.log("Clearing scene before initializing game");
             this.sceneManager.clearScene();
-            
-            // Initialize the selected game
-            if (type === 'blackjack') {
-                this.blackjackGame.initialize();
-                this.pokerGame.reset();
-                this.gameState = GameState.WAITING;
-                this.showTutorial('blackjack');
-            } else if (type === 'poker') {
-                this.pokerGame.initialize();
-                this.blackjackGame.reset();
-                this.gameState = GameState.WAITING;
-                this.showTutorial('poker');
-            }
-        } else {
-            console.error("SceneManager not initialized. Cannot set game type.");
+        } catch (error) {
+            console.error("Error clearing scene:", error);
+            return false;
         }
+        
+        // Initialize the selected game
+        if (type === 'blackjack') {
+            console.log("Initializing Blackjack game");
+            this.gameState = GameState.BETTING;
+            this.blackjackGame.initialize();
+            this.showTutorial('blackjack');
+        } else if (type === 'poker') {
+            console.log("Initializing Texas Hold'Em game");
+            this.gameState = GameState.POKER_BETTING;
+            this.pokerGame.initialize();
+            this.showTutorial('poker');
+        }
+        
+        return true;
     }
 
     showTutorial(gameType) {
-        if (this.tutorialShown) return;
+        const tutorialDisplay = document.getElementById('tutorial-display');
+        if (!tutorialDisplay) return;
         
-        const tutorials = {
-            blackjack: [
+        // Clear previous tutorial messages
+        tutorialDisplay.innerHTML = '';
+        
+        // Define tutorial messages based on game type
+        let messages = [];
+        
+        if (gameType === 'blackjack') {
+            messages = [
                 "Welcome to Quantum Blackjack!",
-                "You can use quantum mechanics to manipulate your cards:",
-                "1. Click a card to select it",
-                "2. Use the Hadamard chip to put it in superposition",
-                "3. Use the Schrödinger chip to measure it",
-                "4. Use the Entanglement chip to entangle two cards",
-                "Try to beat the dealer while using quantum mechanics to your advantage!"
-            ],
-            poker: [
-                "Welcome to Quantum Texas Hold Em!",
-                "You can use quantum mechanics to manipulate your cards:",
-                "1. Click a card to select it",
-                "2. Use the Hadamard chip to put it in superposition",
-                "3. Use the Schrödinger chip to measure it",
-                "4. Use the Entanglement chip to entangle two cards",
-                "Try to make the best hand while using quantum mechanics to your advantage!"
-            ]
-        };
-
-        if (this.uiManager) {
-            this.uiManager.showTutorial(tutorials[gameType]);
-            this.tutorialShown = true;
+                "Your goal is to get a hand value closer to 21 than the dealer without going over.",
+                "The Hadamard button puts a card in superposition between two states.",
+                "The Schrödinger button measures a superposed card, collapsing it to one state.",
+                "The Entanglement button links two superposed cards, forcing them to collapse to the same suit color.",
+                "Use quantum mechanics wisely to beat the dealer!"
+            ];
+        } else if (gameType === 'poker') {
+            messages = [
+                "Welcome to Quantum Texas Hold'Em!",
+                "You'll be dealt two cards, followed by five community cards.",
+                "Use quantum mechanics to create the best five-card hand.",
+                "The Hadamard button puts a card in superposition between two states.",
+                "The Schrödinger button measures a superposed card, collapsing it to one state.",
+                "The Entanglement button links two superposed cards, forcing them to collapse to the same suit color.",
+                "Use your quantum powers wisely to win the pot!"
+            ];
         }
+        
+        // Display messages with fade-in effect
+        tutorialDisplay.style.display = 'block';
+        
+        const displayMessages = async () => {
+            for (let i = 0; i < messages.length; i++) {
+                const messageElem = document.createElement('div');
+                messageElem.className = 'tutorial-message';
+                messageElem.textContent = messages[i];
+                tutorialDisplay.appendChild(messageElem);
+                
+                // Fade in the message
+                await new Promise(resolve => {
+                    setTimeout(() => {
+                        messageElem.style.opacity = '1';
+                        resolve();
+                    }, 500);
+                });
+                
+                // Wait before showing next message
+                if (i < messages.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+            
+            // Hide tutorial after all messages are shown
+            await new Promise(resolve => setTimeout(resolve, 4000));
+            tutorialDisplay.style.opacity = '0';
+            
+            // Remove tutorial after fade out
+            setTimeout(() => {
+                tutorialDisplay.style.display = 'none';
+                tutorialDisplay.style.opacity = '1';
+                tutorialDisplay.innerHTML = '';
+            }, 1000);
+        };
+        
+        displayMessages();
     }
 
     async startNewGame() {
@@ -132,26 +188,32 @@ export class GameManager extends EventEmitter {
 
     // Blackjack controls
     async playerHit() {
-        if (this.gameType === 'blackjack' && this.gameState === GameState.PLAYER_TURN) {
+        console.log("Player hit");
+        if (this.gameType === 'blackjack' && this.blackjackGame) {
             await this.blackjackGame.playerHit();
         }
     }
 
     async playerStand() {
-        if (this.gameType === 'blackjack' && this.gameState === GameState.PLAYER_TURN) {
+        console.log("Player stand");
+        if (this.gameType === 'blackjack' && this.blackjackGame) {
             await this.blackjackGame.playerStand();
         }
     }
 
     async playerDouble() {
-        if (this.gameType === 'blackjack' && this.gameState === GameState.PLAYER_TURN) {
-            await this.blackjackGame.playerDouble();
+        console.log("Player double");
+        if (this.gameType === 'blackjack' && this.blackjackGame) {
+            // Implementation for doubling down would go here
+            this.uiManager.updateStatus("Double down not implemented yet");
         }
     }
 
     async playerSplit() {
-        if (this.gameType === 'blackjack' && this.gameState === GameState.PLAYER_TURN) {
-            await this.blackjackGame.playerSplit();
+        console.log("Player split");
+        if (this.gameType === 'blackjack' && this.blackjackGame) {
+            // Implementation for splitting pairs would go here
+            this.uiManager.updateStatus("Split not implemented yet");
         }
     }
 
@@ -179,17 +241,21 @@ export class GameManager extends EventEmitter {
     // UI updates
     updateUI() {
         if (this.uiManager) {
-            if (this.gameType === 'blackjack') {
-                this.uiManager.updateHandValues(
-                    this.blackjackGame.getPlayerHandValue(),
-                    this.blackjackGame.getDealerHandValue()
-                );
+            if (this.gameType === 'blackjack' && this.blackjackGame) {
+                // Update UI for Blackjack
+                this.uiManager.updatePlayerValue(this.blackjackGame.playerValue);
+                this.uiManager.updateDealerValue(this.blackjackGame.dealerValue);
+            } else if (this.gameType === 'poker' && this.pokerGame) {
+                // Update UI for Poker
+                this.uiManager.updatePlayerChips(this.pokerGame.playerChips);
+                this.uiManager.updatePotAmount(this.pokerGame.pot);
             }
             
             // Update quantum counts
-            const superposedCards = this.countSuperposedCards();
-            const entangledCards = this.countEntangledCards();
-            this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
+            this.uiManager.updateQuantumCounts(
+                this.countSuperposedCards(),
+                this.countEntangledCards()
+            );
         }
     }
 

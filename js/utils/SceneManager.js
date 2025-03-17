@@ -2,507 +2,604 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export class SceneManager {
-    constructor(container, assetLoader) {
-        this.container = container;
+    constructor(canvas, assetLoader) {
+        console.log("Creating SceneManager");
+        this.canvas = canvas;
         this.assetLoader = assetLoader;
-        this.init();
-    }
-
-    init() {
-        // Create scene
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x1a1a2e);
-        
-        // Create camera
-        this.setupCamera();
-        
-        // Create renderer
-        this.setupRenderer();
-        
-        // Create lighting
-        this.setupLights();
-        
-        // Create table
-        this.setupTable();
-        
-        // Set up orbit controls for development
-        this.setupOrbitControls();
-        
-        // Create raycaster for object interaction
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.cardObjects = [];
+        this.tableObject = null;
+        this.clickListeners = [];
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
-        
-        // Create object containers with adjusted positions for better visibility
-        this.playerCardsGroup = new THREE.Group();
-        this.playerCardsGroup.position.set(0, 0.5, 3); // Move player cards closer to camera
-        this.scene.add(this.playerCardsGroup);
-        console.log("Player cards group position:", this.playerCardsGroup.position);
-        
-        this.dealerCardsGroup = new THREE.Group();
-        this.dealerCardsGroup.position.set(0, 0.5, -3); // Move dealer cards further from camera
-        this.scene.add(this.dealerCardsGroup);
-        console.log("Dealer cards group position:", this.dealerCardsGroup.position);
-        
-        // Setup interactive objects registry
-        this.interactiveObjects = [];
+        this.initialized = false;
     }
 
-    setupCamera() {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-        this.camera.position.set(0, 12, 10); // Higher and further back for better view
-        this.camera.lookAt(0, 0, 0);
-        console.log("Camera position:", this.camera.position);
-    }
-
-    setupRenderer() {
-        // Check if container is already a canvas
-        if (this.container instanceof HTMLCanvasElement) {
-            this.renderer = new THREE.WebGLRenderer({ 
-                antialias: true,
-                alpha: true,
-                canvas: this.container
-            });
-        } else {
-            // Create new canvas if container is not a canvas
-            const canvas = document.createElement('canvas');
-            this.container.appendChild(canvas);
-            this.renderer = new THREE.WebGLRenderer({ 
-                antialias: true,
-                alpha: true,
-                canvas: canvas
-            });
+    async initialize() {
+        console.log("Initializing SceneManager");
+        if (!this.canvas) {
+            console.error("Canvas element not found");
+            return false;
         }
 
-        // Set renderer size to window size
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        
-        // Force a render to check if WebGL is working
-        this.renderer.render(this.scene, this.camera);
-        console.log("Initial render complete - WebGL context:", this.renderer.getContext());
+        try {
+            // Create scene
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x000033);
+
+            // Create camera
+            this.camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            this.camera.position.set(0, 10, 5);
+            this.camera.lookAt(0, 0, 0);
+
+            // Create renderer
+            this.renderer = new THREE.WebGLRenderer({
+                canvas: this.canvas,
+                antialias: true
+            });
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.shadowMap.enabled = true;
+
+            // Add lights
+            this.addLights();
+
+            // Add table
+            await this.addTable();
+
+            // Add event listeners
+            this.setupMouseEvents();
+
+            this.initialized = true;
+            console.log("SceneManager initialized successfully");
+            return true;
+        } catch (error) {
+            console.error("Error initializing SceneManager:", error);
+            return false;
+        }
     }
 
-    setupLights() {
-        // Main directional light
-        this.dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        this.dirLight.position.set(5, 5, 5);
-        this.dirLight.castShadow = true;
-        this.dirLight.shadow.mapSize.width = 1024;
-        this.dirLight.shadow.mapSize.height = 1024;
-        this.dirLight.shadow.camera.near = 0.5;
-        this.dirLight.shadow.camera.far = 50;
-        this.dirLight.shadow.bias = -0.001;
-        this.scene.add(this.dirLight);
-        
-        // Add vaporwave ambient light
-        const ambientLight = new THREE.AmbientLight(0x33007a, 0.3);
+    addLights() {
+        // Ambient light for overall illumination
+        const ambientLight = new THREE.AmbientLight(0x404040, 1);
         this.scene.add(ambientLight);
-        
-        // Add neon style point lights
-        this.addNeonLight(0xff00ff, 3, 1, -3, 0.7); // Magenta
-        this.addNeonLight(0x00ffff, -3, 1, 3, 0.7); // Cyan
-        
-        // Animated rotating light for vaporwave effect
-        this.rotatingLight = new THREE.PointLight(0xff0080, 0.5, 15);
-        this.rotatingLight.position.set(0, 4, 0);
-        this.scene.add(this.rotatingLight);
-    }
-    
-    addNeonLight(color, x, y, z, intensity) {
-        const light = new THREE.PointLight(color, intensity, 10);
-        light.position.set(x, y, z);
-        
-        // Add a small sphere to represent the light source
-        const lightSphere = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 16, 16),
-            new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8 })
-        );
-        lightSphere.position.copy(light.position);
-        
-        this.scene.add(light);
-        this.scene.add(lightSphere);
+
+        // Directional light for shadows
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 15, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -10;
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        this.scene.add(directionalLight);
+
+        // Point light for table
+        const pointLight = new THREE.PointLight(0x00ffff, 0.5);
+        pointLight.position.set(0, 5, 0);
+        this.scene.add(pointLight);
     }
 
-    setupTable() {
-        // Create table geometry
-        const tableGeometry = new THREE.PlaneGeometry(20, 20);
-        const tableMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x006400, // Dark green
-            roughness: 0.8,
-            metalness: 0.2
-        });
-        this.table = new THREE.Mesh(tableGeometry, tableMaterial);
-        this.table.rotation.x = -Math.PI / 2;
-        this.table.position.y = -0.1;
-        this.table.receiveShadow = true;
-        this.scene.add(this.table);
-
-        // Add table border
-        const borderGeometry = new THREE.BoxGeometry(22, 0.5, 22);
-        const borderMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x8B4513, // Brown
-            roughness: 0.7,
-            metalness: 0.3
-        });
-        const border = new THREE.Mesh(borderGeometry, borderMaterial);
-        border.position.y = 0.2;
-        border.castShadow = true;
-        this.scene.add(border);
-
-        // Add felt texture
-        const feltTexture = new THREE.TextureLoader().load('assets/textures/felt.jpg');
-        feltTexture.wrapS = THREE.RepeatWrapping;
-        feltTexture.wrapT = THREE.RepeatWrapping;
-        feltTexture.repeat.set(4, 4);
-        this.table.material.map = feltTexture;
-        this.table.material.needsUpdate = true;
-    }
-
-    setupOrbitControls() {
-        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
-        this.controls.minDistance = 3;
-        this.controls.maxDistance = 10;
-        this.controls.maxPolarAngle = Math.PI / 2 - 0.1;
-        this.controls.update();
-    }
-
-    onWindowResize() {
-        const width = this.container.clientWidth;
-        const height = this.container.clientHeight;
-        
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        
-        this.renderer.setSize(width, height);
-    }
-
-    startRenderLoop(updateCallback) {
-        this.updateCallback = updateCallback;
-        this.render();
-    }
-
-    render() {
-        requestAnimationFrame(() => this.render());
-        
-        // Update orbit controls
-        if (this.controls) {
-            this.controls.update();
-        }
-        
-        // Call the update callback
-        if (this.updateCallback) {
-            this.updateCallback();
-        }
-        
-        // Rotate the light for vaporwave effect
-        if (this.rotatingLight) {
-            const time = Date.now() * 0.001;
-            this.rotatingLight.position.x = Math.sin(time * 0.5) * 5;
-            this.rotatingLight.position.z = Math.cos(time * 0.5) * 5;
+    async addTable() {
+        try {
+            // Create table surface geometry (a simple flat plane)
+            const tableGeometry = new THREE.PlaneGeometry(20, 12);
             
-            // Slowly cycle the color
-            const hue = (time * 0.1) % 1;
-            const color = new THREE.Color().setHSL(hue, 1, 0.5);
-            this.rotatingLight.color = color;
+            // Create table material with felt texture
+            const tableMaterial = new THREE.MeshStandardMaterial({
+                color: 0x008800,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            
+            // Create table mesh
+            this.tableObject = new THREE.Mesh(tableGeometry, tableMaterial);
+            this.tableObject.rotation.x = -Math.PI / 2; // Rotate to lay flat
+            this.tableObject.position.y = 0;
+            this.tableObject.receiveShadow = true;
+            
+            // Add table to scene
+            this.scene.add(this.tableObject);
+            
+            // Add a rim around the table
+            const rimGeometry = new THREE.BoxGeometry(20.5, 0.3, 0.5);
+            const rimMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4d2800,
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            
+            // Create the four sides of the rim
+            const topRim = new THREE.Mesh(rimGeometry, rimMaterial);
+            topRim.position.set(0, 0.15, -6.25);
+            this.scene.add(topRim);
+            
+            const bottomRim = new THREE.Mesh(rimGeometry, rimMaterial);
+            bottomRim.position.set(0, 0.15, 6.25);
+            this.scene.add(bottomRim);
+            
+            const leftRimGeometry = new THREE.BoxGeometry(0.5, 0.3, 12.5);
+            const leftRim = new THREE.Mesh(leftRimGeometry, rimMaterial);
+            leftRim.position.set(-10.25, 0.15, 0);
+            this.scene.add(leftRim);
+            
+            const rightRim = new THREE.Mesh(leftRimGeometry, rimMaterial);
+            rightRim.position.set(10.25, 0.15, 0);
+            this.scene.add(rightRim);
+            
+            console.log("Table created successfully");
+            return true;
+        } catch (error) {
+            console.error("Error creating table:", error);
+            return false;
         }
-        
-        // Render the scene
-        this.renderer.render(this.scene, this.camera);
     }
 
-    addCard(card, position, isDealer = false) {
-        if (!card || !card.mesh) {
-            console.error("Invalid card object:", card);
+    setupMouseEvents(onCardClick) {
+        if (!this.canvas) {
+            console.error("Canvas element not found for mouse events");
             return;
         }
 
-        // Set position
-        card.mesh.position.copy(position);
-        
-        // Adjust position based on whether it's dealer's card
-        if (isDealer) {
-            card.mesh.position.z = -2; // Dealer's cards are further back
-            card.mesh.position.y = 0.1; // Slightly above table
-        } else {
-            card.mesh.position.z = 2; // Player's cards are closer
-            card.mesh.position.y = 0.1; // Slightly above table
-        }
-
-        // Add to scene
-        this.scene.add(card.mesh);
-        
-        // Add to interactive objects for raycasting
-        this.interactiveObjects.push(card.mesh);
-        
-        // Store card reference in userData
-        card.mesh.userData.card = card;
-        
-        // Enable shadows
-        card.mesh.castShadow = true;
-        card.mesh.receiveShadow = true;
-        
-        console.log("Added card to scene:", {
-            position: card.mesh.position,
-            isDealer: isDealer,
-            card: card
+        // Mouse move event handler
+        this.canvas.addEventListener('mousemove', (event) => {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         });
-    }
 
-    removeCard(cardMesh) {
-        // Find and remove from appropriate group
-        if (this.playerCardsGroup.children.includes(cardMesh)) {
-            this.playerCardsGroup.remove(cardMesh);
-        } else if (this.dealerCardsGroup.children.includes(cardMesh)) {
-            this.dealerCardsGroup.remove(cardMesh);
-        }
-        
-        // Remove from interactive objects
-        const index = this.interactiveObjects.indexOf(cardMesh);
-        if (index !== -1) {
-            this.interactiveObjects.splice(index, 1);
-        }
-    }
+        // Mouse click event handler
+        this.canvas.addEventListener('click', (event) => {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    clearCards() {
-        // Clear player cards
-        while (this.playerCardsGroup.children.length > 0) {
-            const card = this.playerCardsGroup.children[0];
-            this.playerCardsGroup.remove(card);
-        }
-        
-        // Clear dealer cards
-        while (this.dealerCardsGroup.children.length > 0) {
-            const card = this.dealerCardsGroup.children[0];
-            this.dealerCardsGroup.remove(card);
-        }
-        
-        // Clear interactive objects that are cards
-        this.interactiveObjects = this.interactiveObjects.filter(obj => !obj.userData.card);
-    }
-
-    setupMouseEvents(onObjectClick) {
-        this.onObjectClick = onObjectClick; // Store the callback
-        
-        // Add click event listener
-        this.container.addEventListener('click', (event) => {
-            // Calculate mouse position in normalized device coordinates
-            const rect = this.renderer.domElement.getBoundingClientRect();
-            this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-            
-            console.log("Mouse click at:", this.mouse.x, this.mouse.y);
-            console.log("Interactive objects:", this.interactiveObjects.length);
-            
             // Update the picking ray with the camera and mouse position
             this.raycaster.setFromCamera(this.mouse, this.camera);
-            
+
             // Calculate objects intersecting the picking ray
-            const intersects = this.raycaster.intersectObjects(this.interactiveObjects, true);
-            console.log("Intersections:", intersects.length);
-            
+            const intersects = this.raycaster.intersectObjects(this.cardObjects);
+
             if (intersects.length > 0) {
-                const object = intersects[0].object;
-                console.log("Clicked on object:", object);
+                // Get the first intersected card
+                const selectedCard = intersects[0].object.userData.card;
                 
-                // Find the card associated with this object
-                let card = null;
-                if (object.userData.card) {
-                    card = object.userData.card;
-                } else if (object.parent && object.parent.userData.card) {
-                    card = object.parent.userData.card;
-                }
-                
-                if (card && this.onObjectClick) {
-                    console.log("Card selected:", card);
-                    this.onObjectClick(card);
+                if (selectedCard && onCardClick) {
+                    onCardClick(selectedCard);
                 }
             }
         });
+
+        if (onCardClick) {
+            this.clickListeners.push(onCardClick);
+        }
     }
 
-    createEntanglementLine(card1, card2) {
-        // Remove any existing entanglement line
-        this.removeEntanglementLine();
+    clearScene() {
+        console.log("Clearing scene");
         
-        // Create a line between the two cards
-        const points = [];
-        points.push(new THREE.Vector3().copy(card1.mesh.position));
-        points.push(new THREE.Vector3().copy(card2.mesh.position));
-        
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({ 
-            color: 0xf48fb1, 
-            linewidth: 3,
-            transparent: true,
-            opacity: 0.8
-        });
-        
-        this.entanglementLine = new THREE.Line(geometry, material);
-        this.scene.add(this.entanglementLine);
-        
-        // Create glowing particles along the line
-        this.createEntanglementParticles(points[0], points[1]);
-        
-        return this.entanglementLine;
-    }
-
-    createEntanglementParticles(start, end) {
-        // Create particles to visualize entanglement
-        const particleCount = 20;
-        const particleGeometry = new THREE.BufferGeometry();
-        const particleMaterial = new THREE.PointsMaterial({
-            color: 0xf48fb1,
-            size: 0.1,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
-        });
-        
-        const positions = new Float32Array(particleCount * 3);
-        
-        for (let i = 0; i < particleCount; i++) {
-            const t = i / (particleCount - 1);
-            const x = start.x + (end.x - start.x) * t;
-            const y = start.y + (end.y - start.y) * t;
-            const z = start.z + (end.z - start.z) * t;
+        // Remove all card objects
+        for (const cardObj of this.cardObjects) {
+            // Remove from scene
+            this.scene.remove(cardObj);
             
-            positions[i * 3] = x;
-            positions[i * 3 + 1] = y;
-            positions[i * 3 + 2] = z;
-        }
-        
-        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        
-        this.entanglementParticles = new THREE.Points(particleGeometry, particleMaterial);
-        this.scene.add(this.entanglementParticles);
-    }
-
-    removeEntanglementLine() {
-        if (this.entanglementLine) {
-            this.scene.remove(this.entanglementLine);
-            this.entanglementLine = null;
-        }
-        
-        if (this.entanglementParticles) {
-            this.scene.remove(this.entanglementParticles);
-            this.entanglementParticles = null;
-        }
-    }
-
-    updateEntanglementLine(card1, card2) {
-        if (this.entanglementLine && card1 && card2) {
-            // Update line geometry
-            const positions = this.entanglementLine.geometry.attributes.position.array;
-            positions[0] = card1.mesh.position.x;
-            positions[1] = card1.mesh.position.y;
-            positions[2] = card1.mesh.position.z;
-            positions[3] = card2.mesh.position.x;
-            positions[4] = card2.mesh.position.y;
-            positions[5] = card2.mesh.position.z;
-            this.entanglementLine.geometry.attributes.position.needsUpdate = true;
-            
-            // Update particles
-            if (this.entanglementParticles) {
-                const particlePositions = this.entanglementParticles.geometry.attributes.position.array;
-                const particleCount = particlePositions.length / 3;
-                
-                for (let i = 0; i < particleCount; i++) {
-                    const t = i / (particleCount - 1);
-                    particlePositions[i * 3] = card1.mesh.position.x + (card2.mesh.position.x - card1.mesh.position.x) * t;
-                    particlePositions[i * 3 + 1] = card1.mesh.position.y + (card2.mesh.position.y - card1.mesh.position.y) * t;
-                    particlePositions[i * 3 + 2] = card1.mesh.position.z + (card2.mesh.position.z - card1.mesh.position.z) * t;
+            // Dispose of geometries and materials
+            if (cardObj.geometry) cardObj.geometry.dispose();
+            if (cardObj.material) {
+                if (Array.isArray(cardObj.material)) {
+                    cardObj.material.forEach(material => material.dispose());
+                } else {
+                    cardObj.material.dispose();
                 }
-                
-                this.entanglementParticles.geometry.attributes.position.needsUpdate = true;
             }
         }
+        
+        // Clear the card objects array
+        this.cardObjects = [];
+        
+        // Keep the table and lights, but remove other objects
+        const objectsToKeep = [this.tableObject];
+        const objectsToRemove = [];
+        
+        this.scene.traverse(object => {
+            if (object instanceof THREE.Mesh && !objectsToKeep.includes(object)) {
+                objectsToRemove.push(object);
+            }
+        });
+        
+        // Remove objects
+        for (const obj of objectsToRemove) {
+            this.scene.remove(obj);
+            
+            // Dispose of geometries and materials
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach(material => material.dispose());
+                } else {
+                    obj.material.dispose();
+                }
+            }
+        }
+        
+        console.log("Scene cleared successfully");
     }
 
-    update(deltaTime) {
-        // Update orbit controls
-        if (this.controls) {
-            this.controls.update();
+    addCard(card, position, rotation, isPlayerCard = true) {
+        if (!this.initialized) {
+            console.error("Cannot add card - SceneManager not initialized");
+            return null;
         }
-        
-        // Rotate the light for vaporwave effect
-        if (this.rotatingLight) {
-            const time = Date.now() * 0.001;
-            this.rotatingLight.position.x = Math.sin(time * 0.5) * 5;
-            this.rotatingLight.position.z = Math.cos(time * 0.5) * 5;
+
+        try {
+            console.log(`Adding card: ${card.toString()} at position`, position);
             
-            // Slowly cycle the color
-            const hue = (time * 0.1) % 1;
-            const color = new THREE.Color().setHSL(hue, 1, 0.5);
-            this.rotatingLight.color = color;
+            // Create card mesh
+            const cardGeometry = new THREE.BoxGeometry(1, 0.05, 1.5);
+            
+            // Create materials for each side of the card
+            const materials = [
+                new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Right side
+                new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Left side
+                new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Top edge
+                new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Bottom edge
+                new THREE.MeshStandardMaterial({ map: this.createCardTexture(card) }), // Front face (card face)
+                new THREE.MeshStandardMaterial({ map: this.createCardBackTexture() }) // Back face
+            ];
+            
+            // Create card mesh with geometry and materials
+            const cardMesh = new THREE.Mesh(cardGeometry, materials);
+            
+            // Set position and rotation
+            cardMesh.position.copy(position);
+            if (rotation) {
+                cardMesh.rotation.copy(rotation);
+            }
+            
+            // Adjust the Y position slightly to avoid z-fighting with the table
+            cardMesh.position.y = 0.03;
+            
+            // Add shadow casting
+            cardMesh.castShadow = true;
+            cardMesh.receiveShadow = false;
+            
+            // Store card reference in userData for raycasting
+            cardMesh.userData.card = card;
+            
+            // Add card to the scene
+            this.scene.add(cardMesh);
+            this.cardObjects.push(cardMesh);
+            
+            // Store mesh reference in card
+            card.mesh = cardMesh;
+            
+            // If player card, adjust position to be more visible
+            if (isPlayerCard) {
+                cardMesh.position.z += 0.1;
+            }
+            
+            console.log("Card added successfully:", card.toString());
+            return cardMesh;
+        } catch (error) {
+            console.error("Error adding card:", error);
+            return null;
+        }
+    }
+
+    createCardTexture(card) {
+        // Canvas for drawing card face
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 768;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill background white
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw card border
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+        
+        // Value and suit
+        const value = card.value;
+        const suit = card.suit;
+        
+        // Font and color based on suit
+        ctx.font = '120px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        
+        if (suit === 'hearts' || suit === 'diamonds') {
+            ctx.fillStyle = '#ff0000';
+        } else {
+            ctx.fillStyle = '#000000';
         }
         
-        // Log rendering activity occasionally
-        if (Math.random() < 0.01) { // Log only 1% of the time to avoid console spam
-            console.log("Scene rendering - Player cards:", 
-                this.playerCardsGroup.children.length, 
-                "Dealer cards:", this.dealerCardsGroup.children.length);
+        // Draw value at top left and bottom right
+        const valueText = this.getCardValueText(value);
+        
+        // Top left value
+        ctx.font = '80px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(valueText, 40, 100);
+        
+        // Bottom right value (upside down)
+        ctx.save();
+        ctx.translate(canvas.width - 40, canvas.height - 40);
+        ctx.rotate(Math.PI);
+        ctx.textAlign = 'right';
+        ctx.fillText(valueText, 0, 0);
+        ctx.restore();
+        
+        // Draw suit symbols
+        const suitSymbol = this.getSuitSymbol(suit);
+        
+        // Top left suit
+        ctx.font = '80px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(suitSymbol, 40, 170);
+        
+        // Bottom right suit (upside down)
+        ctx.save();
+        ctx.translate(canvas.width - 40, canvas.height - 100);
+        ctx.rotate(Math.PI);
+        ctx.textAlign = 'right';
+        ctx.fillText(suitSymbol, 0, 0);
+        ctx.restore();
+        
+        // Large central suit
+        ctx.font = '300px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(suitSymbol, canvas.width / 2, canvas.height / 2 + 75);
+        
+        // Create texture from canvas
+        const texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+        
+        return texture;
+    }
+
+    createCardBackTexture() {
+        // Canvas for drawing card back
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 768;
+        const ctx = canvas.getContext('2d');
+        
+        // Background color
+        ctx.fillStyle = '#0000cc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Card pattern (simple grid)
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 2;
+        
+        // Draw grid
+        const gridSize = 30;
+        for (let x = 0; x < canvas.width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
         }
         
-        // Render the scene
+        for (let y = 0; y < canvas.height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        
+        // Draw decorative elements
+        ctx.fillStyle = '#ff00ff';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, 100, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Inner circle
+        ctx.fillStyle = '#00ffff';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, 50, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '30px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('QUANTUM', canvas.width / 2, canvas.height / 2 - 10);
+        ctx.fillText('CARDS', canvas.width / 2, canvas.height / 2 + 30);
+        
+        // Create texture from canvas
+        const texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+        
+        return texture;
+    }
+
+    getCardValueText(value) {
+        // Convert numerical card values to text representation
+        switch (value) {
+            case 1: return 'A';
+            case 11: return 'J';
+            case 12: return 'Q';
+            case 13: return 'K';
+            default: return value.toString();
+        }
+    }
+
+    getSuitSymbol(suit) {
+        // Convert suit names to unicode symbols
+        switch (suit) {
+            case 'hearts': return '♥';
+            case 'diamonds': return '♦';
+            case 'clubs': return '♣';
+            case 'spades': return '♠';
+            default: return '?';
+        }
+    }
+
+    flipCard(card, faceUp = true) {
+        if (!card || !card.mesh) {
+            console.error("Cannot flip card - invalid card or missing mesh", card);
+            return;
+        }
+
+        try {
+            // Animate the card flip
+            const mesh = card.mesh;
+            const initialRotation = mesh.rotation.y;
+            const targetRotation = faceUp ? 0 : Math.PI;
+            
+            // Use a simple animation loop
+            let progress = 0;
+            const duration = 500; // ms
+            const startTime = Date.now();
+            
+            const animate = () => {
+                const currentTime = Date.now();
+                progress = Math.min(1, (currentTime - startTime) / duration);
+                
+                // Easing function for smoother animation
+                const eased = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+                
+                // Update rotation
+                mesh.rotation.y = initialRotation * (1 - eased) + targetRotation * eased;
+                
+                // Continue animation if not complete
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // Animation complete
+                    card.isFaceUp = faceUp;
+                    mesh.rotation.y = targetRotation;
+                }
+            };
+            
+            // Start animation
+            animate();
+        } catch (error) {
+            console.error("Error flipping card:", error);
+        }
+    }
+
+    render() {
+        if (!this.renderer || !this.scene || !this.camera) return;
         this.renderer.render(this.scene, this.camera);
     }
 
     resize(width, height) {
+        if (!this.renderer || !this.camera) return;
+        
+        this.renderer.setSize(width, height);
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height);
     }
 
-    clearScene() {
-        // Remove all objects from the scene
-        while (this.scene.children.length > 0) {
-            const object = this.scene.children[0];
-            if (object instanceof THREE.Mesh) {
-                // Dispose of materials and geometries
-                if (object.material) {
-                    if (Array.isArray(object.material)) {
-                        object.material.forEach(material => {
-                            if (material.map) material.map.dispose();
-                            material.dispose();
-                        });
-                    } else {
-                        if (object.material.map) object.material.map.dispose();
-                        object.material.dispose();
+    update(deltaTime) {
+        // Update card animations, effects, etc.
+        for (const cardObj of this.cardObjects) {
+            const card = cardObj.userData.card;
+            if (card) {
+                // Update superposition effects
+                if (card.isInSuperposition) {
+                    // Make the card pulse/glow
+                    const pulseAmount = 0.1 * Math.sin(Date.now() * 0.003);
+                    cardObj.scale.set(1 + pulseAmount, 1, 1 + pulseAmount);
+                    
+                    // Add cyan glow effect
+                    if (cardObj.material && Array.isArray(cardObj.material)) {
+                        const emissiveIntensity = 0.3 + 0.2 * Math.sin(Date.now() * 0.005);
+                        for (const mat of cardObj.material) {
+                            mat.emissive = new THREE.Color(0, 1, 1);
+                            mat.emissiveIntensity = emissiveIntensity;
+                        }
+                    }
+                } else if (card.isEntangled) {
+                    // Add magenta glow for entangled cards
+                    const pulseAmount = 0.05 * Math.sin(Date.now() * 0.002);
+                    cardObj.scale.set(1 + pulseAmount, 1, 1 + pulseAmount);
+                    
+                    if (cardObj.material && Array.isArray(cardObj.material)) {
+                        const emissiveIntensity = 0.3 + 0.1 * Math.sin(Date.now() * 0.004);
+                        for (const mat of cardObj.material) {
+                            mat.emissive = new THREE.Color(1, 0, 1);
+                            mat.emissiveIntensity = emissiveIntensity;
+                        }
+                    }
+                } else {
+                    // Reset normal card appearance
+                    cardObj.scale.set(1, 1, 1);
+                    
+                    if (cardObj.material && Array.isArray(cardObj.material)) {
+                        for (const mat of cardObj.material) {
+                            mat.emissive = new THREE.Color(0, 0, 0);
+                            mat.emissiveIntensity = 0;
+                        }
                     }
                 }
-                if (object.geometry) {
-                    object.geometry.dispose();
-                }
             }
-            this.scene.remove(object);
         }
+        
+        // Draw entanglement lines between entangled cards
+        this.updateEntanglementLines();
+    }
 
-        // Clear interactive objects
-        this.interactiveObjects = [];
-
-        // Re-add the camera and lights
-        this.scene.add(this.camera);
-        this.setupLights();
-
-        // Re-add orbit controls
-        this.setupOrbitControls();
-
-        // Create new card groups
-        this.playerCardsGroup = new THREE.Group();
-        this.playerCardsGroup.position.set(0, 0.5, 3);
-        this.scene.add(this.playerCardsGroup);
-
-        this.dealerCardsGroup = new THREE.Group();
-        this.dealerCardsGroup.position.set(0, 0.5, -3);
-        this.scene.add(this.dealerCardsGroup);
-
-        // Re-add the table
-        this.setupTable();
+    updateEntanglementLines() {
+        // Remove existing entanglement lines
+        this.scene.children.forEach(child => {
+            if (child.userData && child.userData.isEntanglementLine) {
+                this.scene.remove(child);
+            }
+        });
+        
+        // Find all entangled cards
+        const entangledCards = [];
+        for (const cardObj of this.cardObjects) {
+            const card = cardObj.userData.card;
+            if (card && card.entangledWith) {
+                entangledCards.push(card);
+            }
+        }
+        
+        // Draw lines between entangled cards
+        for (const card of entangledCards) {
+            if (card.mesh && card.entangledWith && card.entangledWith.mesh) {
+                const startPos = card.mesh.position.clone();
+                const endPos = card.entangledWith.mesh.position.clone();
+                
+                // Adjust line height to be above cards
+                startPos.y += 0.1;
+                endPos.y += 0.1;
+                
+                // Create line geometry
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints([startPos, endPos]);
+                
+                // Create line material with glow effect
+                const lineMaterial = new THREE.LineBasicMaterial({
+                    color: 0xff00ff,
+                    linewidth: 3,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                
+                // Create line
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                line.userData.isEntanglementLine = true;
+                
+                // Add to scene
+                this.scene.add(line);
+            }
+        }
     }
 } 

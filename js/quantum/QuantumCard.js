@@ -2,572 +2,536 @@ import * as THREE from 'three';
 import { CardState } from './CardState.js';
 
 export class QuantumCard {
-    constructor(state1, state2, assetLoader) {
-        this.state1 = state1; // First possible state
-        this.state2 = state2; // Second possible state
-        this.assetLoader = assetLoader;
+    constructor(value, suit) {
+        // Base properties
+        this.value = value;                 // Card value (1-13, where 1=Ace, 11=Jack, etc.)
+        this.suit = suit;                   // Card suit (hearts, diamonds, clubs, spades)
+        this.isFaceUp = false;              // Whether the card is face up
+        this.isDealt = false;               // Whether the card has been dealt
+        this.isSelected = false;            // Whether the card is currently selected
         
         // Quantum properties
-        this.collapsed = true; // Card starts in a definite state (collapsed)
-        this.currentState = this.state1; // Default to first state
-        this.entangledWith = null; // Reference to another card this is entangled with
+        this.isInSuperposition = false;     // Whether the card is in superposition
+        this.isEntangled = false;           // Whether the card is entangled
+        this.entangledWith = null;          // Card that this card is entangled with
+        this.superpositionStates = [];      // States for superposition
+        this.amplitudes = [];               // Amplitudes for each superposition state
         
-        // Card state
-        this.isFaceUp = false; // Track if card is face up or face down
+        // 3D properties
+        this.mesh = null;                   // THREE.js mesh for the card
+        this.position = null;               // Position in 3D space
+        this.rotation = null;               // Rotation in 3D space
+        this.flipAnimation = null;          // Animation for flipping the card
         
-        // Probability amplitudes (complex numbers represented as {real, imaginary})
-        // Initially 100% state1, 0% state2
-        this.amplitudes = {
-            state1: { real: 1, imaginary: 0 },
-            state2: { real: 0, imaginary: 0 }
-        };
-        
-        // Create the 3D mesh
-        this.createMesh();
-        
-        // Animation properties
-        this.animating = false;
-        this.animationTime = 0;
-        this.animationDuration = 0;
-        this.animationStart = null;
-        this.animationEnd = null;
-        this.animationCallback = null;
-        this.wobbleAmount = 0;
-        this.wobbleSpeed = 0;
-        this.glowIntensity = 0;
-        this.pulseSpeed = 0;
-    }
-
-    createMesh() {
-        // Create card geometry
-        const geometry = new THREE.BoxGeometry(0.7, 1, 0.05);
-        
-        // Create materials for front and back
-        const frontMaterial = new THREE.MeshStandardMaterial({
-            map: this.createCardTexture(this.state1),
-            roughness: 0.5,
-            metalness: 0.1
-        });
-        
-        const backMaterial = new THREE.MeshStandardMaterial({
-            map: this.createCardBackTexture(),
-            roughness: 0.5,
-            metalness: 0.1
-        });
-        
-        // Create materials array for all sides
-        const materials = [
-            new THREE.MeshStandardMaterial({ color: 0xffffff }), // right
-            new THREE.MeshStandardMaterial({ color: 0xffffff }), // left
-            new THREE.MeshStandardMaterial({ color: 0xffffff }), // top
-            new THREE.MeshStandardMaterial({ color: 0xffffff }), // bottom
-            frontMaterial, // front
-            backMaterial  // back
-        ];
-        
-        // Create mesh with materials
-        this.mesh = new THREE.Mesh(geometry, materials);
-        
-        // Set initial rotation for face down
-        this.mesh.rotation.x = Math.PI;
-        
-        // Enable shadows
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-        
-        // Store reference to this card in the mesh
-        this.mesh.userData.card = this;
-        
-        console.log("Created card mesh with textures:", {
-            front: frontMaterial.map,
-            back: backMaterial.map,
-            position: this.mesh.position
-        });
+        // Initial state is the actual card value/suit
+        this.superpositionStates.push({ value: this.value, suit: this.suit });
+        this.amplitudes.push(1.0);  // 100% probability for the actual state
     }
     
-    addNeonEdges() {
-        // Create neon edges for the card
-        const edges = new THREE.EdgesGeometry(this.mesh.geometry);
-        this.edgesLine = new THREE.LineSegments(
-            edges,
-            new THREE.LineBasicMaterial({ 
-                color: this.isEntangled ? 0xff00ff : 0x00ffff,
-                transparent: true,
-                opacity: 0.8,
-                linewidth: 1
-            })
-        );
-        
-        // Scale slightly larger than the card to avoid z-fighting
-        this.edgesLine.scale.set(1.02, 1.2, 1.02);
-        this.mesh.add(this.edgesLine);
-        
-        // Add pulsing animation for the edges
-        this.edgePulseTime = 0;
-    }
-
-    createSuperpositionEffect() {
-        // Create particle system for superposition effect
-        const particleCount = 50;
-        const particleGeometry = new THREE.BufferGeometry();
-        const particlePositions = new Float32Array(particleCount * 3);
-        const particleSizes = new Float32Array(particleCount);
-        
-        for (let i = 0; i < particleCount; i++) {
-            // Random positions around the card
-            particlePositions[i * 3] = (Math.random() - 0.5) * 1.5;
-            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 0.5;
-            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 2.1;
+    /**
+     * Convert the card to a string representation
+     */
+    toString() {
+        // If card is in superposition, show both possibilities
+        if (this.isInSuperposition) {
+            const state1 = this.getValueString(this.superpositionStates[0].value) + 
+                           ' of ' + 
+                           this.capitalizeFirstLetter(this.superpositionStates[0].suit);
             
-            // Random sizes for the particles
-            particleSizes[i] = Math.random() * 0.05 + 0.02;
+            const state2 = this.getValueString(this.superpositionStates[1].value) + 
+                           ' of ' + 
+                           this.capitalizeFirstLetter(this.superpositionStates[1].suit);
+            
+            return `[${state1} | ${state2}]`;
         }
         
-        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-        particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
-        
-        // Create shader material for the particles
-        const particleMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                color: { value: new THREE.Color(0x00ffff) },
-                time: { value: 0 }
-            },
-            vertexShader: `
-                attribute float size;
-                uniform float time;
-                varying float vAlpha;
-                
-                void main() {
-                    vec3 pos = position;
-                    // Add wavy motion
-                    pos.x += sin(time * 2.0 + position.z * 5.0) * 0.05;
-                    pos.y += cos(time * 2.5 + position.x * 4.0) * 0.05;
-                    pos.z += sin(time * 3.0 + position.y * 3.0) * 0.05;
-                    
-                    vAlpha = 0.7 + 0.3 * sin(time * 3.0 + position.y * 5.0);
-                    
-                    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-                    gl_PointSize = size * (300.0 / -mvPosition.z);
-                    gl_Position = projectionMatrix * mvPosition;
-                }
-            `,
-            fragmentShader: `
-                uniform vec3 color;
-                varying float vAlpha;
-                
-                void main() {
-                    // Create a circular point
-                    vec2 center = gl_PointCoord - vec2(0.5);
-                    float dist = length(center);
-                    if (dist > 0.5) discard;
-                    
-                    // Add glow effect
-                    float glow = 1.0 - dist * 2.0;
-                    gl_FragColor = vec4(color, vAlpha * glow);
-                }
-            `,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-        
-        this.superpositionParticles = new THREE.Points(particleGeometry, particleMaterial);
-        this.superpositionParticles.visible = false;
-        this.mesh.add(this.superpositionParticles);
+        // Regular card
+        return this.getValueString(this.value) + ' of ' + this.capitalizeFirstLetter(this.suit);
     }
     
-    createEntanglementEffect() {
-        // Create entanglement visual effect
-        const lineGeometry = new THREE.BufferGeometry();
-        const lineMaterial = new THREE.LineBasicMaterial({
-            color: 0xff00ff,
-            transparent: true,
-            opacity: 0.8,
-            linewidth: 2
-        });
-        
-        // Will be populated when entanglement is established
-        this.entanglementLine = new THREE.Line(lineGeometry, lineMaterial);
-        this.entanglementLine.visible = false;
+    /**
+     * Return the string value for a card value
+     */
+    getValueString(value) {
+        switch(value) {
+            case 1: return 'Ace';
+            case 11: return 'Jack';
+            case 12: return 'Queen';
+            case 13: return 'King';
+            default: return value.toString();
+        }
     }
-
-    flipToFront(duration = 0.5) {
-        this.isFaceUp = true; // Set card as face up
-        return this.animateRotation(Math.PI, 0, duration);
+    
+    /**
+     * Capitalize the first letter of a string
+     */
+    capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
     }
-
-    flipToBack(duration = 0.5) {
-        this.isFaceUp = false; // Set card as face down
-        return this.animateRotation(0, Math.PI, duration);
+    
+    /**
+     * Get the numeric value of the card (for game rules)
+     */
+    getGameValue() {
+        // In Blackjack, Ace can be 1 or 11, face cards are 10
+        if (this.value === 1) {
+            return 11;  // Default to 11 for Ace
+        } else if (this.value >= 11 && this.value <= 13) {
+            return 10;  // Jack, Queen, King are worth 10
+        } else {
+            return this.value;
+        }
     }
-
-    animateRotation(startRotationX, endRotationX, duration) {
-        return new Promise((resolve) => {
-            this.animating = true;
-            this.animationTime = 0;
-            this.animationDuration = duration;
-            this.animationStart = { rotationX: startRotationX };
-            this.animationEnd = { rotationX: endRotationX };
-            this.mesh.rotation.x = startRotationX;
-            this.animationCallback = () => {
-                resolve();
-                this.animating = false;
-            };
-        });
-    }
-
-    update(deltaTime) {
-        // Handle ongoing animations
-        if (this.animating) {
-            this.animationTime += deltaTime;
-            const t = Math.min(this.animationTime / this.animationDuration, 1.0);
-            const smoothT = this.easeInOutQuad(t);
-            
-            // Interpolate rotation
-            if (this.animationStart && this.animationEnd) {
-                this.mesh.rotation.x = this.animationStart.rotationX + 
-                    (this.animationEnd.rotationX - this.animationStart.rotationX) * smoothT;
-            }
-            
-            // Check if animation is complete
-            if (t >= 1.0 && this.animationCallback) {
-                this.animationCallback();
-            }
+    
+    /**
+     * Get possible game values when in superposition
+     */
+    getPossibleGameValues() {
+        if (!this.isInSuperposition) {
+            return [this.getGameValue()];
         }
         
-        // Update superposition effect
-        if (this.isInSuperposition && this.superpositionParticles) {
-            this.superpositionParticles.visible = true;
-            this.superpositionParticles.material.uniforms.time.value += deltaTime;
-            
-            if (this.edgesLine) {
-                // Pulse the edge color and opacity for superposition
-                this.edgePulseTime += deltaTime * 2;
-                const pulseValue = (Math.sin(this.edgePulseTime) + 1) / 2;
-                this.edgesLine.material.opacity = 0.5 + pulseValue * 0.5;
-                
-                // Slowly cycle colors for superposition
-                const hue = (this.edgePulseTime * 0.1) % 1;
-                const color = new THREE.Color().setHSL(hue, 1, 0.5);
-                this.edgesLine.material.color = color;
-            }
-        } else if (this.superpositionParticles) {
-            this.superpositionParticles.visible = false;
-        }
-        
-        // Update entanglement effect
-        if (this.isEntangled && this.entangledWith && this.entanglementLine) {
-            this.entanglementLine.visible = true;
-            
-            // Get position of this card and entangled card
-            const pos1 = new THREE.Vector3();
-            this.mesh.getWorldPosition(pos1);
-            
-            const pos2 = new THREE.Vector3();
-            this.entangledWith.mesh.getWorldPosition(pos2);
-            
-            // Update line geometry to connect the cards
-            const points = [pos1, pos2];
-            this.entanglementLine.geometry.setFromPoints(points);
-            
-            // Add pulsing effect to entanglement line
-            const pulseValue = (Math.sin(this.edgePulseTime) + 1) / 2;
-            this.entanglementLine.material.opacity = 0.5 + pulseValue * 0.5;
-            
-            // Set edge color to magenta for entanglement
-            if (this.edgesLine) {
-                this.edgesLine.material.color.set(0xff00ff);
-            }
-        } else if (this.entanglementLine) {
-            this.entanglementLine.visible = false;
-            
-            // Reset edge color to cyan if not entangled
-            if (this.edgesLine && !this.isEntangled) {
-                this.edgesLine.material.color.set(0x00ffff);
-            }
-        }
-    }
-
-    putInSuperposition() {
-        if (this.collapsed) {
-            // Set to superposition state
-            this.collapsed = false;
-            
-            // Set equal probabilities for both states
-            this.amplitudes.state1 = { real: 1/Math.sqrt(2), imaginary: 0 };
-            this.amplitudes.state2 = { real: 1/Math.sqrt(2), imaginary: 0 };
-            
-            // Show alternative state
-            this.superpositionParticles.visible = true;
-            
-            // Enable wobble and glow effects
-            this.wobbleAmount = 0.1;
-            this.wobbleSpeed = 1.0;
-            this.glowIntensity = 0.5;
-            this.pulseSpeed = 1.0;
-            
-            return true;
-        }
-        return false; // Already in superposition
-    }
-
-    collapse(forcedState = null) {
-        if (!this.collapsed) {
-            // If we have a forced state (from entanglement), use it
-            if (forcedState) {
-                this.currentState = forcedState;
+        const values = [];
+        for (const state of this.superpositionStates) {
+            let gameValue;
+            if (state.value === 1) {
+                gameValue = 11;
+            } else if (state.value >= 11 && state.value <= 13) {
+                gameValue = 10;
             } else {
-                // Randomly collapse based on probabilities
-                const p1 = this.getProbability(this.state1);
-                const random = Math.random();
-                
-                if (random < p1) {
-                    this.currentState = this.state1;
-                } else {
-                    this.currentState = this.state2;
-                }
+                gameValue = state.value;
             }
-            
-            // Update front material to show the collapsed state
-            this.mesh.children[4].material.map = this.assetLoader.getTexture(
-                `card_${this.currentState.value}_of_${this.currentState.suit}`
-            );
-            this.mesh.children[4].material.needsUpdate = true;
-            this.mesh.children[4].material.opacity = 1.0;
-            
-            // Hide superposition particles
-            this.superpositionParticles.visible = false;
-            
-            // Reset quantum effects
-            this.collapsed = true;
-            this.wobbleAmount = 0;
-            this.wobbleSpeed = 0;
-            this.glowIntensity = 0;
-            this.pulseSpeed = 0;
-            this.superpositionParticles.material.uniforms.time.value = 0;
-            this.entanglementLine.visible = false;
-            
-            // Reset mesh rotation
-            this.mesh.rotation.z = 0;
-            this.mesh.rotation.y = 0;
-            
-            // Clear entanglement
-            if (this.entangledWith) {
-                const otherCard = this.entangledWith;
-                this.entangledWith = null;
-                
-                // Also collapse the other card if it's still in superposition
-                if (otherCard && !otherCard.collapsed) {
-                    // Ensure entangled cards collapse to matching colors
-                    const matchingColor = this.currentState.isRed() ? 'red' : 'black';
-                    let forcedState;
-                    
-                    if (matchingColor === 'red') {
-                        // Force to a red state
-                        forcedState = otherCard.state1.isRed() ? otherCard.state1 : otherCard.state2;
-                    } else {
-                        // Force to a black state
-                        forcedState = !otherCard.state1.isRed() ? otherCard.state1 : otherCard.state2;
-                    }
-                    
-                    otherCard.collapse(forcedState);
-                }
-            }
-            
-            return this.currentState;
+            values.push(gameValue);
         }
         
-        return null; // Already collapsed
-    }
-
-    entangleWith(otherCard) {
-        if (!this.collapsed && !otherCard.collapsed) {
-            this.entangledWith = otherCard;
-            otherCard.entangledWith = this;
-            return true;
-        }
-        return false;
-    }
-
-    // Calculate probability of measuring a specific state
-    getProbability(state) {
-        const amplitudeKey = state === this.state1 ? 'state1' : 'state2';
-        const amplitude = this.amplitudes[amplitudeKey];
-        
-        // Probability = |amplitude|²
-        return amplitude.real * amplitude.real + amplitude.imaginary * amplitude.imaginary;
-    }
-
-    // Get possible values for blackjack calculation
-    getPossibleValues() {
-        if (this.collapsed) {
-            return [this.currentState.blackjackValue()];
-        } else {
-            return [
-                this.state1.blackjackValue(), 
-                this.state2.blackjackValue()
-            ];
-        }
-    }
-
-    // Return the minimum and maximum possible values
-    getValueRange() {
-        const values = this.getPossibleValues();
-        return {
-            min: Math.min(...values),
-            max: Math.max(...values)
-        };
-    }
-
-    isInSuperposition() {
-        return !this.collapsed;
-    }
-
-    isEntangled() {
-        return this.entangledWith !== null;
-    }
-
-    // Get the current value of the card (for collapsed cards)
-    getValue() {
-        if (this.collapsed) {
-            return this.currentState.blackjackValue();
-        } else {
-            // If not collapsed, return average value
-            return this.getAverageValue();
-        }
+        return values;
     }
     
-    // Get the average value for cards in superposition
-    getAverageValue() {
-        const values = this.getPossibleValues();
-        return values.reduce((sum, val) => sum + val, 0) / values.length;
+    /**
+     * Get the probability of each possible game value
+     */
+    getValueProbabilities() {
+        const probabilities = {};
+        
+        if (this.isInSuperposition) {
+            for (let i = 0; i < this.superpositionStates.length; i++) {
+                const state = this.superpositionStates[i];
+                const amplitude = this.amplitudes[i];
+                const probability = amplitude * amplitude;  // Quantum probability is the square of the amplitude
+                
+                let gameValue;
+                if (state.value === 1) {
+                    gameValue = 11;
+                } else if (state.value >= 11 && state.value <= 13) {
+                    gameValue = 10;
+                } else {
+                    gameValue = state.value;
+                }
+                
+                if (probabilities[gameValue]) {
+                    probabilities[gameValue] += probability;
+                } else {
+                    probabilities[gameValue] = probability;
+                }
+            }
+        } else {
+            probabilities[this.getGameValue()] = 1.0;
+        }
+        
+        return probabilities;
     }
-
-    // Easing function for smoother animations
-    easeInOutQuad(t) {
-        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    
+    /**
+     * Apply Hadamard gate to put card in superposition
+     */
+    applySuperposition() {
+        if (this.isInSuperposition) {
+            console.log("Card is already in superposition");
+            return false;
+        }
+        
+        console.log(`Applying superposition to ${this.toString()}`);
+        
+        // Generate a random alternative state
+        const alternativeState = this.generateAlternativeState();
+        
+        // Add the alternative state to superposition states
+        this.superpositionStates.push(alternativeState);
+        
+        // Set equal amplitudes for both states (1/sqrt(2) ≈ 0.7071)
+        this.amplitudes = [0.7071, 0.7071];
+        
+        // Mark card as in superposition
+        this.isInSuperposition = true;
+        
+        // Apply visual effect to card mesh if it exists
+        if (this.mesh) {
+            // Add cyan glow effect
+            if (this.mesh.material && Array.isArray(this.mesh.material)) {
+                for (const mat of this.mesh.material) {
+                    mat.emissive = new THREE.Color(0, 1, 1);
+                    mat.emissiveIntensity = 0.3;
+                }
+            }
+        }
+        
+        console.log(`Card now in superposition: ${this.toString()}`);
+        return true;
     }
-
-    // Simple flip method that flips card to front
-    flip() {
-        // Set that the card is now face up
-        this.isFaceUp = true;
-        // Just call the existing flipToFront method
-        return this.flipToFront();
+    
+    /**
+     * Generate a random alternative state for superposition
+     */
+    generateAlternativeState() {
+        // Generate a different value and suit than the current one
+        const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+        const values = Array.from({length: 13}, (_, i) => i + 1);
+        
+        // Remove current value and suit
+        const availableSuits = suits.filter(s => s !== this.suit);
+        const availableValues = values.filter(v => v !== this.value);
+        
+        // Randomly select a new value and suit
+        const newValue = availableValues[Math.floor(Math.random() * availableValues.length)];
+        const newSuit = availableSuits[Math.floor(Math.random() * availableSuits.length)];
+        
+        return { value: newValue, suit: newSuit };
     }
-
-    createCardTexture(cardState) {
+    
+    /**
+     * Measure card to collapse superposition
+     */
+    measure() {
+        if (!this.isInSuperposition) {
+            console.log("Card is not in superposition, nothing to measure");
+            return false;
+        }
+        
+        console.log(`Measuring superposition: ${this.toString()}`);
+        
+        // Calculate probabilities
+        const probabilities = this.amplitudes.map(a => a * a);
+        
+        // Choose a random outcome based on probabilities
+        const random = Math.random();
+        let cumulativeProbability = 0;
+        let selectedIndex = 0;
+        
+        for (let i = 0; i < probabilities.length; i++) {
+            cumulativeProbability += probabilities[i];
+            if (random < cumulativeProbability) {
+                selectedIndex = i;
+                break;
+            }
+        }
+        
+        // Collapse to the selected state
+        const selectedState = this.superpositionStates[selectedIndex];
+        this.value = selectedState.value;
+        this.suit = selectedState.suit;
+        
+        // Reset superposition properties
+        this.isInSuperposition = false;
+        this.superpositionStates = [{ value: this.value, suit: this.suit }];
+        this.amplitudes = [1.0];
+        
+        // Apply visual effect to card mesh if it exists
+        if (this.mesh) {
+            // Remove glow effect
+            if (this.mesh.material && Array.isArray(this.mesh.material)) {
+                for (const mat of this.mesh.material) {
+                    mat.emissive = new THREE.Color(0, 0, 0);
+                    mat.emissiveIntensity = 0;
+                }
+            }
+            
+            // Update card texture
+            if (this.mesh.material && Array.isArray(this.mesh.material) && this.mesh.material[4]) {
+                // Front face is typically index 4
+                this.mesh.material[4].map = this.createCardTexture();
+                this.mesh.material[4].needsUpdate = true;
+            }
+        }
+        
+        console.log(`Superposition collapsed to: ${this.toString()}`);
+        
+        // If this card is entangled with another, measure that card too with same color outcome
+        if (this.isEntangled && this.entangledWith) {
+            this.measureEntangledCard();
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Measure an entangled card to match this card's suit color
+     */
+    measureEntangledCard() {
+        if (!this.entangledWith || !this.entangledWith.isInSuperposition) {
+            return;
+        }
+        
+        const entangledCard = this.entangledWith;
+        console.log(`Measuring entangled card: ${entangledCard.toString()}`);
+        
+        // Determine the color of this card's suit
+        const thisColor = this.getCardColor();
+        
+        // Filter the entangled card's states to match the same color
+        const matchingStates = entangledCard.superpositionStates.filter(state => {
+            return this.getSuitColor(state.suit) === thisColor;
+        });
+        
+        if (matchingStates.length === 0) {
+            console.error("No matching color states found for entangled card");
+            return;
+        }
+        
+        // Pick a random state from the matching states
+        const selectedState = matchingStates[Math.floor(Math.random() * matchingStates.length)];
+        
+        // Collapse the entangled card to this state
+        entangledCard.value = selectedState.value;
+        entangledCard.suit = selectedState.suit;
+        
+        // Reset superposition properties of entangled card
+        entangledCard.isInSuperposition = false;
+        entangledCard.isEntangled = false;
+        entangledCard.entangledWith = null;
+        entangledCard.superpositionStates = [{ value: entangledCard.value, suit: entangledCard.suit }];
+        entangledCard.amplitudes = [1.0];
+        
+        // Update the entangled card's mesh
+        if (entangledCard.mesh) {
+            // Remove glow effect
+            if (entangledCard.mesh.material && Array.isArray(entangledCard.mesh.material)) {
+                for (const mat of entangledCard.mesh.material) {
+                    mat.emissive = new THREE.Color(0, 0, 0);
+                    mat.emissiveIntensity = 0;
+                }
+            }
+            
+            // Update card texture
+            if (entangledCard.mesh.material && Array.isArray(entangledCard.mesh.material) && entangledCard.mesh.material[4]) {
+                entangledCard.mesh.material[4].map = entangledCard.createCardTexture();
+                entangledCard.mesh.material[4].needsUpdate = true;
+            }
+        }
+        
+        console.log(`Entangled card collapsed to: ${entangledCard.toString()}`);
+        
+        // Reset this card's entanglement
+        this.isEntangled = false;
+        this.entangledWith = null;
+    }
+    
+    /**
+     * Get the color of the card's suit (red or black)
+     */
+    getCardColor() {
+        return this.getSuitColor(this.suit);
+    }
+    
+    /**
+     * Get the color for a given suit
+     */
+    getSuitColor(suit) {
+        return (suit === 'hearts' || suit === 'diamonds') ? 'red' : 'black';
+    }
+    
+    /**
+     * Entangle this card with another card
+     */
+    entangleWith(targetCard) {
+        if (!this.isInSuperposition) {
+            console.log("Card must be in superposition to entangle");
+            return false;
+        }
+        
+        if (!targetCard.isInSuperposition) {
+            console.log("Target card must be in superposition to entangle");
+            return false;
+        }
+        
+        if (this.isEntangled || targetCard.isEntangled) {
+            console.log("One of the cards is already entangled");
+            return false;
+        }
+        
+        console.log(`Entangling ${this.toString()} with ${targetCard.toString()}`);
+        
+        // Set entanglement properties
+        this.isEntangled = true;
+        this.entangledWith = targetCard;
+        targetCard.isEntangled = true;
+        targetCard.entangledWith = this;
+        
+        // Apply visual effect to card meshes if they exist
+        if (this.mesh) {
+            // Add magenta glow effect
+            if (this.mesh.material && Array.isArray(this.mesh.material)) {
+                for (const mat of this.mesh.material) {
+                    mat.emissive = new THREE.Color(1, 0, 1);
+                    mat.emissiveIntensity = 0.3;
+                }
+            }
+        }
+        
+        if (targetCard.mesh) {
+            // Add magenta glow effect
+            if (targetCard.mesh.material && Array.isArray(targetCard.mesh.material)) {
+                for (const mat of targetCard.mesh.material) {
+                    mat.emissive = new THREE.Color(1, 0, 1);
+                    mat.emissiveIntensity = 0.3;
+                }
+            }
+        }
+        
+        console.log(`Cards are now entangled: ${this.toString()} and ${targetCard.toString()}`);
+        return true;
+    }
+    
+    /**
+     * Create a texture for the card
+     */
+    createCardTexture() {
+        // Canvas for drawing card face
         const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 384;
+        canvas.width = 512;
+        canvas.height = 768;
         const ctx = canvas.getContext('2d');
-
-        // Background
+        
+        // Fill background white
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Card border
+        
+        // Draw card border
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
-
-        // Card value and suit
-        ctx.fillStyle = cardState.suit === 'hearts' || cardState.suit === 'diamonds' ? '#ff0000' : '#000000';
-        ctx.font = 'bold 48px Arial';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+        
+        // Value and suit
+        const value = this.value;
+        const suit = this.suit;
+        
+        // Font and color based on suit
+        ctx.font = '120px Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        // Draw value and suit in top-left
-        const value = this.getDisplayValue(cardState.value);
-        const suit = this.getSuitSymbol(cardState.suit);
-        ctx.fillText(value, 40, 40);
-        ctx.fillText(suit, 40, 90);
-
-        // Draw value and suit in bottom-right (upside down)
+        
+        if (suit === 'hearts' || suit === 'diamonds') {
+            ctx.fillStyle = '#ff0000';
+        } else {
+            ctx.fillStyle = '#000000';
+        }
+        
+        // Draw value at top left and bottom right
+        const valueText = this.getValueText();
+        
+        // Top left value
+        ctx.font = '80px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(valueText, 40, 100);
+        
+        // Bottom right value (upside down)
         ctx.save();
-        ctx.translate(canvas.width, canvas.height);
+        ctx.translate(canvas.width - 40, canvas.height - 40);
         ctx.rotate(Math.PI);
-        ctx.fillText(value, 40, 40);
-        ctx.fillText(suit, 40, 90);
+        ctx.textAlign = 'right';
+        ctx.fillText(valueText, 0, 0);
         ctx.restore();
-
-        // Draw large suit in center
-        ctx.font = 'bold 120px Arial';
-        ctx.fillText(suit, canvas.width / 2, canvas.height / 2);
-
-        return new THREE.CanvasTexture(canvas);
-    }
-
-    createCardBackTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 384;
-        const ctx = canvas.getContext('2d');
-
-        // Background gradient
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        gradient.addColorStop(0, '#4B0082'); // Deep purple
-        gradient.addColorStop(1, '#9400D3'); // Violet
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Card border
-        ctx.strokeStyle = '#00ffff';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
-
-        // Grid pattern
-        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-        ctx.lineWidth = 2;
-        for (let i = 0; i < canvas.width; i += 20) {
-            ctx.beginPath();
-            ctx.moveTo(i, 0);
-            ctx.lineTo(i, canvas.height);
-            ctx.stroke();
-        }
-        for (let i = 0; i < canvas.height; i += 20) {
-            ctx.beginPath();
-            ctx.moveTo(0, i);
-            ctx.lineTo(canvas.width, i);
-            ctx.stroke();
-        }
-
-        // Quantum symbol
-        ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 80px Arial';
+        
+        // Draw suit symbols
+        const suitSymbol = this.getSuitSymbol();
+        
+        // Top left suit
+        ctx.font = '80px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(suitSymbol, 40, 170);
+        
+        // Bottom right suit (upside down)
+        ctx.save();
+        ctx.translate(canvas.width - 40, canvas.height - 100);
+        ctx.rotate(Math.PI);
+        ctx.textAlign = 'right';
+        ctx.fillText(suitSymbol, 0, 0);
+        ctx.restore();
+        
+        // Large central suit
+        ctx.font = '300px Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('Ψ', canvas.width / 2, canvas.height / 2);
-
-        return new THREE.CanvasTexture(canvas);
+        ctx.fillText(suitSymbol, canvas.width / 2, canvas.height / 2 + 75);
+        
+        // Create texture from canvas
+        const texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+        
+        return texture;
     }
-
-    getDisplayValue(value) {
-        const valueMap = {
-            'ace': 'A',
-            'king': 'K',
-            'queen': 'Q',
-            'jack': 'J',
-            '10': '10',
-            '9': '9',
-            '8': '8',
-            '7': '7',
-            '6': '6',
-            '5': '5',
-            '4': '4',
-            '3': '3',
-            '2': '2'
-        };
-        return valueMap[value] || value;
+    
+    /**
+     * Get the text representation of the card's value
+     */
+    getValueText() {
+        switch (this.value) {
+            case 1: return 'A';
+            case 11: return 'J';
+            case 12: return 'Q';
+            case 13: return 'K';
+            default: return this.value.toString();
+        }
     }
-
-    getSuitSymbol(suit) {
-        const suitMap = {
-            'hearts': '♥',
-            'diamonds': '♦',
-            'clubs': '♣',
-            'spades': '♠'
-        };
-        return suitMap[suit] || suit;
+    
+    /**
+     * Get the Unicode symbol for the card's suit
+     */
+    getSuitSymbol() {
+        switch (this.suit) {
+            case 'hearts': return '♥';
+            case 'diamonds': return '♦';
+            case 'clubs': return '♣';
+            case 'spades': return '♠';
+            default: return '?';
+        }
+    }
+    
+    /**
+     * Flip the card
+     */
+    flip(faceUp = !this.isFaceUp) {
+        this.isFaceUp = faceUp;
+        
+        // If the card has a mesh, animate the flip
+        if (this.mesh) {
+            // Animate flip
+            const initialRotation = this.mesh.rotation.y;
+            const targetRotation = faceUp ? 0 : Math.PI;
+            
+            // Use a simple animation loop
+            let progress = 0;
+            const duration = 500; // ms
+            const startTime = Date.now();
+            
+            const animate = () => {
+                const currentTime = Date.now();
+                progress = Math.min(1, (currentTime - startTime) / duration);
+                
+                // Easing function for smoother animation
+                const eased = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+                
+                // Update rotation
+                this.mesh.rotation.y = initialRotation * (1 - eased) + targetRotation * eased;
+                
+                // Continue animation if not complete
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // Animation complete
+                    this.mesh.rotation.y = targetRotation;
+                }
+            };
+            
+            // Start animation
+            animate();
+        }
     }
 } 

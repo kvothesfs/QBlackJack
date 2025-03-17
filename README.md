@@ -4,7 +4,7 @@ A 3D browser-based quantum-themed card game built with Three.js, blending the cl
 
 ## Play Now
 
-You can play the game directly in your browser by visiting the [GitHub Pages deployment](https://your-username.github.io/QBlackJack/).
+You can play the game directly in your browser by visiting the [GitHub Pages deployment](https://kvothesfs.github.io/QBlackJack/).
 
 ## Game Overview
 

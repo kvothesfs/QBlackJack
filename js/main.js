@@ -226,13 +226,33 @@ class QuantumBlackJack {
     }
 }
 
-// Initialize the game when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+// Main initialization and loading handling
+document.addEventListener('DOMContentLoaded', async () => {
     try {
-        console.log("DOM loaded, creating game instance");
+        console.log("DOM loaded, initializing game");
+        
+        // Create and initialize game
         const game = new QuantumBlackJack();
+        
+        // Set up start button click handler
+        const startButton = document.getElementById('start-game-btn');
+        if (startButton) {
+            startButton.addEventListener('click', () => {
+                // Hide loading screen
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
+                
+                // Show game selection
+                const gameSelection = document.getElementById('game-selection');
+                if (gameSelection) {
+                    gameSelection.style.display = 'flex';
+                }
+            });
+        }
     } catch (error) {
-        console.error("Failed to create game:", error);
+        console.error("Failed to initialize game:", error);
         alert("Failed to start game: " + error.message);
     }
 }); 

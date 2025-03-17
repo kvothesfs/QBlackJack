@@ -5,215 +5,342 @@ import * as THREE from 'three';
 export class BlackjackGame {
     constructor(gameManager) {
         this.gameManager = gameManager;
-        this.reset();
-    }
-
-    reset() {
-        this.playerCards = [];
-        this.dealerCards = [];
-        this.gameState = 'initial';
-        this.deck = CardState.createDeck();
-        this.shuffleDeck();
+        this.deck = [];
+        this.playerHand = [];
+        this.dealerHand = [];
+        this.playerValue = 0;
+        this.dealerValue = 0;
+        this.gameState = 'betting';
+        this.playerCardCount = 0;
+        this.dealerCardCount = 0;
     }
 
     initialize() {
+        console.log("Initializing Blackjack game");
         this.reset();
-        this.gameManager.sceneManager.clearScene();
-        this.gameManager.sceneManager.setupTable();
+        this.setupTable();
+    }
+
+    reset() {
+        console.log("Resetting Blackjack game");
+        this.deck = [];
+        this.playerHand = [];
+        this.dealerHand = [];
+        this.playerValue = 0;
+        this.dealerValue = 0;
+        this.gameState = 'betting';
+        this.playerCardCount = 0;
+        this.dealerCardCount = 0;
+
+        // Create a new deck
+        this.createDeck();
+        this.shuffleDeck();
+    }
+
+    update(deltaTime) {
+        // Check if dealer needs to draw (when player stands)
+        if (this.gameState === 'dealer-turn') {
+            this.updateDealerTurn();
+        }
+        
+        // Update card states and animations
+        this.updateCards(deltaTime);
+    }
+
+    updateCards(deltaTime) {
+        // Update player cards
+        for (const card of this.playerHand) {
+            if (card.mesh) {
+                // Apply any animations or effects
+                if (card.isInSuperposition) {
+                    // Superposition effects are handled in SceneManager
+                }
+            }
+        }
+        
+        // Update dealer cards
+        for (const card of this.dealerHand) {
+            if (card.mesh) {
+                // Apply any animations or effects
+                if (card.isInSuperposition) {
+                    // Superposition effects are handled in SceneManager
+                }
+            }
+        }
+    }
+
+    setupTable() {
+        console.log("Setting up Blackjack table");
+        const sceneManager = this.gameManager.sceneManager;
+        
+        if (!sceneManager) {
+            console.error("Cannot setup table - SceneManager not available");
+            return;
+        }
+        
+        // Table is already set up in SceneManager
+        // Just need to reset card positions
+    }
+
+    createDeck() {
+        const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+        const values = Array.from({length: 13}, (_, i) => i + 1);
+        
+        this.deck = [];
+        
+        for (const suit of suits) {
+            for (const value of values) {
+                const card = new QuantumCard(value, suit);
+                this.deck.push(card);
+            }
+        }
+        
+        console.log(`Created deck with ${this.deck.length} cards`);
     }
 
     shuffleDeck() {
+        // Fisher-Yates shuffle
         for (let i = this.deck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
         }
+        
+        console.log("Deck shuffled");
     }
 
     async startNewGame() {
+        console.log("Starting new Blackjack game");
+        
+        // Reset game state
         this.reset();
-        this.gameManager.sceneManager.clearScene();
-        this.gameManager.sceneManager.setupTable();
+        
+        // Clear previous cards from scene
+        if (this.gameManager.sceneManager) {
+            this.gameManager.sceneManager.clearScene();
+        }
+        
+        // Setup table
+        this.setupTable();
         
         // Deal initial cards
         await this.dealInitialCards();
+        
+        // Update UI
+        this.updateUI();
+        
+        // Set game state
+        this.gameState = 'player-turn';
+        
+        // Enable player controls
+        if (this.gameManager.uiManager) {
+            this.gameManager.uiManager.updateStatus("Your turn. Hit or Stand?");
+        }
     }
 
     async dealInitialCards() {
-        // Deal two cards to player
-        await this.dealCardToPlayer();
+        console.log("Dealing initial cards");
+        
+        // Deal first card to player
         await this.dealCardToPlayer();
         
-        // Deal two cards to dealer (one face up, one face down)
+        // Deal first card to dealer
+        await this.dealCardToDealer();
+        
+        // Deal second card to player
+        await this.dealCardToPlayer();
+        
+        // Deal second card to dealer (face down)
         await this.dealCardToDealer(false);
-        await this.dealCardToDealer(true);
         
-        this.gameState = 'player_turn';
-        this.checkForBlackjack();
+        // Calculate initial hand values
+        this.updateHandValues();
     }
 
     async dealCardToPlayer() {
-        const [state1, state2] = this.getNextCardStates();
-        const card = new QuantumCard(state1, state2, this.gameManager.assetLoader);
-        
-        // Calculate position based on number of cards
-        const xOffset = (this.playerCards.length - 1) * 1.5; // Spread cards horizontally
-        const position = new THREE.Vector3(xOffset, 0.1, 2); // Slightly above table, closer to player
-        
-        this.gameManager.sceneManager.addCard(card, position);
-        this.playerCards.push(card);
-        
-        await card.flipToFront();
-        this.updateHandValue();
-    }
-
-    async dealCardToDealer(faceDown = false) {
-        const [state1, state2] = this.getNextCardStates();
-        const card = new QuantumCard(state1, state2, this.gameManager.assetLoader);
-        
-        // Calculate position based on number of cards
-        const xOffset = (this.dealerCards.length - 1) * 1.5; // Spread cards horizontally
-        const position = new THREE.Vector3(xOffset, 0.1, -2); // Slightly above table, closer to dealer
-        
-        this.gameManager.sceneManager.addCard(card, position, true);
-        this.dealerCards.push(card);
-        
-        if (!faceDown) {
-            await card.flipToFront();
-        }
-    }
-
-    getNextCardStates() {
-        if (this.deck.length < 2) {
-            this.deck = CardState.createDeck();
-            this.shuffleDeck();
+        if (this.deck.length === 0) {
+            console.error("No cards left in deck");
+            return null;
         }
         
-        return [this.deck.pop(), this.deck.pop()];
-    }
-
-    async hit() {
-        if (this.gameState !== 'player_turn') return;
+        // Get a card from the deck
+        const card = this.deck.pop();
         
-        await this.dealCardToPlayer();
-        await this.checkForBust();
-    }
-
-    async stand() {
-        if (this.gameState !== 'player_turn') return;
+        // Add to player's hand
+        this.playerHand.push(card);
+        this.playerCardCount++;
         
-        this.gameState = 'dealer_turn';
-        await this.playDealerTurn();
-    }
-
-    async checkForBust() {
-        const { min } = this.calculateHandValue(this.playerCards);
+        // Set card position on the table
+        // Cards should be spread horizontally based on the number of cards already dealt
+        const xOffset = -3 + (this.playerCardCount - 1) * 1.5;
+        const position = new THREE.Vector3(xOffset, 0.1, 2); // Positioned in front of the player
         
-        if (min > 21) {
-            this.gameState = 'game_over';
-            this.gameManager.endGame('dealer');
-        }
-    }
-
-    async playDealerTurn() {
-        // Reveal dealer's face-down card
-        const faceDownCard = this.dealerCards.find(card => !card.isFaceUp);
-        if (faceDownCard) {
-            await faceDownCard.flipToFront();
-        }
-        
-        // Keep drawing cards until dealer has at least 17
-        let dealerValue = this.calculateHandValue(this.dealerCards).min;
-        
-        while (dealerValue < 17) {
-            await this.dealCardToDealer(false);
-            dealerValue = this.calculateHandValue(this.dealerCards).min;
-        }
-        
-        // Compare hands and determine winner
-        await this.determineWinner();
-    }
-
-    async determineWinner() {
-        const playerValue = this.calculateHandValue(this.playerCards).min;
-        const dealerValue = this.calculateHandValue(this.dealerCards).min;
-        
-        if (playerValue > 21) {
-            this.gameManager.endGame('dealer');
-        } else if (dealerValue > 21) {
-            this.gameManager.endGame('player');
-        } else if (playerValue > dealerValue) {
-            this.gameManager.endGame('player');
-        } else if (dealerValue > playerValue) {
-            this.gameManager.endGame('dealer');
-        } else {
-            this.gameManager.endGame('tie');
-        }
-    }
-
-    checkForBlackjack() {
-        if (this.playerCards.length === 2 && this.calculateHandValue(this.playerCards).min === 21) {
-            this.gameState = 'blackjack';
-            this.gameManager.endGame('player');
-        }
-    }
-
-    calculateHandValue(cards) {
-        let minValue = 0;
-        let maxValue = 0;
-        let aceCount = 0;
-        
-        for (const card of cards) {
-            if (card.collapsed) {
-                const value = card.currentState.blackjackValue();
-                minValue += value;
-                maxValue += value;
-                if (value === 11) aceCount++;
-            } else {
-                const { min, max } = card.getValueRange();
-                minValue += min;
-                maxValue += max;
-                if (min === 11 || max === 11) aceCount++;
+        // Add card to scene
+        if (this.gameManager.sceneManager) {
+            const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, true);
+            
+            // Flip card face up
+            if (cardMesh) {
+                setTimeout(() => {
+                    card.flip(true);
+                }, 300);
             }
         }
         
-        // Adjust for aces
-        while (maxValue > 21 && aceCount > 0) {
-            maxValue -= 10;
+        // Update hand value
+        this.updateHandValues();
+        
+        return card;
+    }
+
+    async dealCardToDealer(faceUp = true) {
+        if (this.deck.length === 0) {
+            console.error("No cards left in deck");
+            return null;
+        }
+        
+        // Get a card from the deck
+        const card = this.deck.pop();
+        
+        // Add to dealer's hand
+        this.dealerHand.push(card);
+        this.dealerCardCount++;
+        
+        // Set card position on the table
+        // Cards should be spread horizontally based on the number of cards already dealt
+        const xOffset = -3 + (this.dealerCardCount - 1) * 1.5;
+        const position = new THREE.Vector3(xOffset, 0.1, -2); // Positioned on the dealer's side
+        
+        // Add card to scene
+        if (this.gameManager.sceneManager) {
+            const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
+            
+            // Flip card face up or down based on parameter
+            if (cardMesh) {
+                setTimeout(() => {
+                    card.flip(faceUp);
+                }, 300);
+            }
+        }
+        
+        // Update hand value
+        this.updateHandValues();
+        
+        return card;
+    }
+
+    updateHandValues() {
+        // Calculate player hand value
+        this.playerValue = this.calculateHandValue(this.playerHand);
+        
+        // Calculate dealer hand value (only for face-up cards)
+        const visibleDealerCards = this.dealerHand.filter(card => card.isFaceUp);
+        this.dealerValue = this.calculateHandValue(visibleDealerCards);
+        
+        // Update UI with hand values
+        if (this.gameManager.uiManager) {
+            this.gameManager.uiManager.updatePlayerValue(this.playerValue);
+            this.gameManager.uiManager.updateDealerValue(this.dealerValue);
+        }
+    }
+
+    calculateHandValue(hand) {
+        let value = 0;
+        let aceCount = 0;
+        
+        // First sum up all cards
+        for (const card of hand) {
+            // For cards in superposition, use the average value
+            if (card.isInSuperposition) {
+                const possibleValues = card.getPossibleGameValues();
+                const avgValue = possibleValues.reduce((a, b) => a + b, 0) / possibleValues.length;
+                value += Math.round(avgValue);
+                
+                // Check if any possible state is an Ace
+                if (possibleValues.includes(11)) {
+                    aceCount++;
+                }
+            } else {
+                // Regular card
+                const cardValue = card.getGameValue();
+                value += cardValue;
+                
+                // Count Aces
+                if (cardValue === 11) {
+                    aceCount++;
+                }
+            }
+        }
+        
+        // Adjust for Aces if needed
+        while (value > 21 && aceCount > 0) {
+            value -= 10; // Convert an Ace from 11 to 1
             aceCount--;
         }
         
-        return { min: minValue, max: maxValue };
+        return value;
     }
 
-    updateHandValue() {
-        const { min, max } = this.calculateHandValue(this.playerCards);
-        let displayValue = min === max ? min.toString() : `${min}-${max}`;
-        
-        if (this.playerCards.some(card => !card.collapsed)) {
-            displayValue += ' (uncertain)';
+    updateDealerTurn() {
+        // Reveal dealer's face-down card first
+        const faceDownCard = this.dealerHand.find(card => !card.isFaceUp);
+        if (faceDownCard) {
+            faceDownCard.flip(true);
+            this.updateHandValues();
+            return; // Wait one update cycle after revealing card
         }
         
-        this.gameManager.uiManager.updateStatus(`Player's hand: ${displayValue}`);
+        // Dealer draws until they have 17 or more
+        if (this.dealerValue < 17) {
+            this.dealCardToDealer();
+        } else {
+            // Dealer is done drawing
+            this.endGame();
+        }
     }
 
-    update(deltaTime) {
-        // Update all player cards
-        for (const card of this.playerCards) {
-            if (card && card.update) {
-                card.update(deltaTime);
-            }
+    endGame() {
+        // Determine winner
+        if (this.playerValue > 21) {
+            // Player busts
+            this.gameState = 'game-over';
+            this.gameManager.uiManager.showLose("Bust! You lose.");
+        } else if (this.dealerValue > 21) {
+            // Dealer busts
+            this.gameState = 'game-over';
+            this.gameManager.uiManager.showWin("Dealer busts! You win.");
+        } else if (this.playerValue > this.dealerValue) {
+            // Player wins
+            this.gameState = 'game-over';
+            this.gameManager.uiManager.showWin("You win!");
+        } else if (this.playerValue < this.dealerValue) {
+            // Dealer wins
+            this.gameState = 'game-over';
+            this.gameManager.uiManager.showLose("Dealer wins.");
+        } else {
+            // Push (tie)
+            this.gameState = 'game-over';
+            this.gameManager.uiManager.showTie("Push! It's a tie.");
         }
+    }
 
-        // Update all dealer cards
-        for (const card of this.dealerCards) {
-            if (card && card.update) {
-                card.update(deltaTime);
-            }
+    playerHit() {
+        if (this.gameState !== 'player-turn') return;
+        
+        // Deal a card to the player
+        this.dealCardToPlayer();
+        
+        // Check if player busts
+        if (this.playerValue > 21) {
+            this.gameState = 'game-over';
+            this.gameManager.uiManager.showLose("Bust! You lose.");
         }
+    }
 
-        // Update game state if needed
-        if (this.gameState === 'player_turn') {
-            this.updateHandValue();
-        }
+    playerStand() {
+        if (this.gameState !== 'player-turn') return;
+        
+        // Switch to dealer's turn
+        this.gameState = 'dealer-turn';
+        this.gameManager.uiManager.updateStatus("Dealer's turn");
     }
 } 
