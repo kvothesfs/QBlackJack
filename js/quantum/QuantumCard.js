@@ -39,80 +39,50 @@ export class QuantumCard {
     }
 
     createMesh() {
-        // Create a larger card for better visibility
-        const cardGeometry = new THREE.BoxGeometry(2.8, 0.01, 4);
+        // Create card geometry
+        const geometry = new THREE.BoxGeometry(0.7, 1, 0.05);
         
-        // Get the texture or generate a fallback
-        let frontTexture;
-        try {
-            frontTexture = this.assetLoader.getTexture(`card_${this.state1.value}_of_${this.state1.suit}`);
-            // If texture is undefined, generate a procedural one
-            if (!frontTexture) {
-                console.log(`Creating procedural texture for ${this.state1.value} of ${this.state1.suit}`);
-                frontTexture = this.createCardTexture(this.state1);
-            }
-        } catch (error) {
-            console.warn("Error loading card texture:", error);
-            frontTexture = this.createCardTexture(this.state1);
-        }
-        
-        const cardMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.3,
-            metalness: 0.7,
-            map: frontTexture
+        // Create materials for front and back
+        const frontMaterial = new THREE.MeshStandardMaterial({
+            map: this.createCardTexture(this.state1),
+            roughness: 0.5,
+            metalness: 0.1
         });
-        
-        // Get or generate back texture
-        let backTexture;
-        try {
-            backTexture = this.assetLoader.getTexture('cardBack');
-            if (!backTexture) {
-                console.log("Creating procedural card back texture");
-                backTexture = this.createCardBackTexture();
-            }
-        } catch (error) {
-            console.warn("Error loading card back texture:", error);
-            backTexture = this.createCardBackTexture();
-        }
         
         const backMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.3,
-            metalness: 0.7,
-            map: backTexture
+            map: this.createCardBackTexture(),
+            roughness: 0.5,
+            metalness: 0.1
         });
         
-        // Create materials array with front and back textures
+        // Create materials array for all sides
         const materials = [
-            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // right
-            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // left
-            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // top
-            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // bottom
-            cardMaterial, // front
+            new THREE.MeshStandardMaterial({ color: 0xffffff }), // right
+            new THREE.MeshStandardMaterial({ color: 0xffffff }), // left
+            new THREE.MeshStandardMaterial({ color: 0xffffff }), // top
+            new THREE.MeshStandardMaterial({ color: 0xffffff }), // bottom
+            frontMaterial, // front
             backMaterial  // back
         ];
         
-        this.mesh = new THREE.Mesh(cardGeometry, materials);
+        // Create mesh with materials
+        this.mesh = new THREE.Mesh(geometry, materials);
+        
+        // Set initial rotation for face down
+        this.mesh.rotation.x = Math.PI;
+        
+        // Enable shadows
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
         
-        // Add vaporwave neon edge effect
-        this.addNeonEdges();
-        
-        // Create the superposition effect
-        this.createSuperpositionEffect();
-        
-        // Create the entanglement effect
-        this.createEntanglementEffect();
-        
-        // Set initial rotation (back facing up)
-        this.mesh.rotation.x = Math.PI; // Face down initially
-        
-        // Add userData for raycasting
+        // Store reference to this card in the mesh
         this.mesh.userData.card = this;
         
-        console.log(`Created card mesh for ${this.state1.value} of ${this.state1.suit}`);
+        console.log("Created card mesh with textures:", {
+            front: frontMaterial.map,
+            back: backMaterial.map,
+            position: this.mesh.position
+        });
     }
     
     addNeonEdges() {

@@ -257,4 +257,16 @@ export class TexasHoldEm {
             );
         }
     }
+
+    async startNewGame() {
+        this.reset();
+        this.gameManager.sceneManager.clearScene();
+        this.gameManager.sceneManager.setupTable();
+        
+        // Deal initial cards
+        await this.dealInitialCards();
+        
+        // Update UI
+        this.updateUI();
+    }
 } 

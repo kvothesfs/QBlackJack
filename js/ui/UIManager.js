@@ -221,4 +221,50 @@ export class UIManager {
             this.statusDisplay.textContent = message;
         }
     }
+
+    showWin() {
+        this.updateStatus('You win!');
+        this.showNotification('Congratulations! You won!');
+    }
+
+    showLose() {
+        this.updateStatus('Dealer wins!');
+        this.showNotification('Better luck next time!');
+    }
+
+    showTie() {
+        this.updateStatus('Push!');
+        this.showNotification('It\'s a tie!');
+    }
+
+    showNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+    updateHandValues(playerValue, dealerValue) {
+        const playerValueElement = document.getElementById('player-value');
+        const dealerValueElement = document.getElementById('dealer-value');
+        
+        if (playerValueElement) {
+            playerValueElement.textContent = `Player: ${playerValue}`;
+        }
+        if (dealerValueElement) {
+            dealerValueElement.textContent = `Dealer: ${dealerValue}`;
+        }
+    }
+
+    updateQuantumCounts(superposedCards, entangledCards) {
+        const quantumCountsElement = document.getElementById('quantum-counts');
+        if (quantumCountsElement) {
+            quantumCountsElement.textContent = `Superposed: ${superposedCards} | Entangled: ${entangledCards}`;
+        }
+    }
 } 

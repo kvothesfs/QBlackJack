@@ -228,8 +228,10 @@ export class SceneManager {
         // Adjust position based on whether it's dealer's card
         if (isDealer) {
             card.mesh.position.z = -2; // Dealer's cards are further back
+            card.mesh.position.y = 0.1; // Slightly above table
         } else {
             card.mesh.position.z = 2; // Player's cards are closer
+            card.mesh.position.y = 0.1; // Slightly above table
         }
 
         // Add to scene
