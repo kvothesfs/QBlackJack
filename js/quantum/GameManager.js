@@ -36,6 +36,23 @@ export class GameManager extends EventEmitter {
 
     initialize(sceneManager, assetLoader, uiManager) {
         console.log("GameManager initializing with dependencies");
+        
+        // Validate dependencies
+        if (!sceneManager) {
+            console.error("SceneManager is required for initialization");
+            return false;
+        }
+        
+        if (!assetLoader) {
+            console.error("AssetLoader is required for initialization");
+            return false;
+        }
+        
+        if (!uiManager) {
+            console.error("UIManager is required for initialization");
+            return false;
+        }
+        
         this.sceneManager = sceneManager;
         this.assetLoader = assetLoader;
         this.uiManager = uiManager;
@@ -45,11 +62,20 @@ export class GameManager extends EventEmitter {
             this.sceneManager.setupMouseEvents((card) => {
                 this.handleCardSelection(card);
             });
-            this.initialized = true;
-            console.log("GameManager successfully initialized");
         } else {
-            console.error("Failed to initialize GameManager - SceneManager is null");
+            console.error("SceneManager not available for mouse events");
+            return false;
         }
+        
+        // Initialize game instances
+        this.blackjackGame = new BlackjackGame(this);
+        this.pokerGame = new TexasHoldEm(this);
+        
+        // Mark as initialized
+        this.initialized = true;
+        console.log("GameManager initialization complete");
+        
+        return true;
     }
 
     handleCardSelection(card) {
@@ -95,11 +121,13 @@ export class GameManager extends EventEmitter {
             this.gameState = GameState.BETTING;
             this.blackjackGame.initialize();
             this.showTutorial('blackjack');
+            this.startNewGame(); // Start the game after selection
         } else if (type === 'poker') {
             console.log("Initializing Texas Hold'Em game");
             this.gameState = GameState.POKER_BETTING;
             this.pokerGame.initialize();
             this.showTutorial('poker');
+            this.startNewGame(); // Start the game after selection
         }
         
         return true;
@@ -240,22 +268,29 @@ export class GameManager extends EventEmitter {
 
     // UI updates
     updateUI() {
-        if (this.uiManager) {
+        if (!this.uiManager) {
+            console.error("Cannot update UI - UIManager not available");
+            return;
+        }
+        
+        try {
+            // Update UI based on game type
             if (this.gameType === 'blackjack' && this.blackjackGame) {
-                // Update UI for Blackjack
+                // Update Blackjack UI
                 this.uiManager.updatePlayerValue(this.blackjackGame.playerValue);
                 this.uiManager.updateDealerValue(this.blackjackGame.dealerValue);
             } else if (this.gameType === 'poker' && this.pokerGame) {
-                // Update UI for Poker
+                // Update Poker UI
                 this.uiManager.updatePlayerChips(this.pokerGame.playerChips);
                 this.uiManager.updatePotAmount(this.pokerGame.pot);
             }
             
             // Update quantum counts
-            this.uiManager.updateQuantumCounts(
-                this.countSuperposedCards(),
-                this.countEntangledCards()
-            );
+            const superposed = this.countSuperposedCards();
+            const entangled = this.countEntangledCards();
+            this.uiManager.updateQuantumCounts(superposed, entangled);
+        } catch (error) {
+            console.error("Error updating UI:", error);
         }
     }
 

@@ -188,18 +188,29 @@ export class SceneManager {
     clearScene() {
         console.log("Clearing scene");
         
+        if (!this.scene) {
+            console.error("Cannot clear scene - scene object is null");
+            return false;
+        }
+        
         // Remove all card objects
-        for (const cardObj of this.cardObjects) {
-            // Remove from scene
-            this.scene.remove(cardObj);
-            
-            // Dispose of geometries and materials
-            if (cardObj.geometry) cardObj.geometry.dispose();
-            if (cardObj.material) {
-                if (Array.isArray(cardObj.material)) {
-                    cardObj.material.forEach(material => material.dispose());
-                } else {
-                    cardObj.material.dispose();
+        if (this.cardObjects && this.cardObjects.length > 0) {
+            for (const cardObj of this.cardObjects) {
+                if (!cardObj) continue;
+                
+                // Remove from scene
+                this.scene.remove(cardObj);
+                
+                // Dispose of geometries and materials
+                if (cardObj.geometry) cardObj.geometry.dispose();
+                if (cardObj.material) {
+                    if (Array.isArray(cardObj.material)) {
+                        cardObj.material.forEach(material => {
+                            if (material) material.dispose();
+                        });
+                    } else if (cardObj.material) {
+                        cardObj.material.dispose();
+                    }
                 }
             }
         }
@@ -211,28 +222,35 @@ export class SceneManager {
         const objectsToKeep = [this.tableObject];
         const objectsToRemove = [];
         
-        this.scene.traverse(object => {
-            if (object instanceof THREE.Mesh && !objectsToKeep.includes(object)) {
-                objectsToRemove.push(object);
-            }
-        });
-        
-        // Remove objects
-        for (const obj of objectsToRemove) {
-            this.scene.remove(obj);
+        if (this.scene) {
+            this.scene.traverse(object => {
+                if (object instanceof THREE.Mesh && !objectsToKeep.includes(object)) {
+                    objectsToRemove.push(object);
+                }
+            });
             
-            // Dispose of geometries and materials
-            if (obj.geometry) obj.geometry.dispose();
-            if (obj.material) {
-                if (Array.isArray(obj.material)) {
-                    obj.material.forEach(material => material.dispose());
-                } else {
-                    obj.material.dispose();
+            // Remove objects
+            for (const obj of objectsToRemove) {
+                if (!obj) continue;
+                
+                this.scene.remove(obj);
+                
+                // Dispose of geometries and materials
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                    if (Array.isArray(obj.material)) {
+                        obj.material.forEach(material => {
+                            if (material) material.dispose();
+                        });
+                    } else if (obj.material) {
+                        obj.material.dispose();
+                    }
                 }
             }
         }
         
         console.log("Scene cleared successfully");
+        return true;
     }
 
     addCard(card, position, rotation, isPlayerCard = true) {
@@ -556,25 +574,41 @@ export class SceneManager {
     }
 
     updateEntanglementLines() {
+        if (!this.scene) {
+            console.warn("Cannot update entanglement lines - scene is null");
+            return;
+        }
+        
         // Remove existing entanglement lines
+        const linesToRemove = [];
         this.scene.children.forEach(child => {
-            if (child.userData && child.userData.isEntanglementLine) {
-                this.scene.remove(child);
+            if (child && child.userData && child.userData.isEntanglementLine) {
+                linesToRemove.push(child);
             }
         });
         
+        // Remove lines in a separate loop to avoid modifying the array while iterating
+        for (const line of linesToRemove) {
+            this.scene.remove(line);
+            if (line.geometry) line.geometry.dispose();
+            if (line.material) line.material.dispose();
+        }
+        
         // Find all entangled cards
         const entangledCards = [];
-        for (const cardObj of this.cardObjects) {
-            const card = cardObj.userData.card;
-            if (card && card.entangledWith) {
-                entangledCards.push(card);
+        if (this.cardObjects && this.cardObjects.length > 0) {
+            for (const cardObj of this.cardObjects) {
+                if (cardObj && cardObj.userData && cardObj.userData.card && cardObj.userData.card.entangledWith) {
+                    entangledCards.push(cardObj.userData.card);
+                }
             }
+        } else {
+            return; // No cards to process
         }
         
         // Draw lines between entangled cards
         for (const card of entangledCards) {
-            if (card.mesh && card.entangledWith && card.entangledWith.mesh) {
+            if (card && card.mesh && card.entangledWith && card.entangledWith.mesh) {
                 const startPos = card.mesh.position.clone();
                 const endPos = card.entangledWith.mesh.position.clone();
                 

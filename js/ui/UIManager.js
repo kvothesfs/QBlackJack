@@ -120,6 +120,8 @@ export class UIManager {
         const blackjackBtn = document.getElementById('blackjack-btn');
         const pokerBtn = document.getElementById('poker-btn');
         
+        console.log("Game selection buttons:", blackjackBtn, pokerBtn);
+        
         if (blackjackBtn && pokerBtn) {
             blackjackBtn.addEventListener('click', () => {
                 console.log("Blackjack button clicked");
@@ -214,40 +216,55 @@ export class UIManager {
             return;
         }
 
+        // Check if gameManager is properly initialized
+        if (!this.gameManager.initialized) {
+            console.error("GameManager not fully initialized yet");
+            this.showError("Game is still initializing. Please wait a moment and try again.");
+            return;
+        }
+
         // Attempt to set the game type
-        const success = this.gameManager.setGameType(gameType);
-        
-        if (success) {
-            console.log(`Successfully selected game: ${gameType}`);
+        try {
+            const success = this.gameManager.setGameType(gameType);
             
-            // Hide game selection
-            const gameSelection = document.getElementById('game-selection');
-            if (gameSelection) {
-                gameSelection.style.display = 'none';
+            if (success) {
+                console.log(`Successfully selected game: ${gameType}`);
+                
+                // Hide game selection
+                const gameSelection = document.getElementById('game-selection');
+                if (gameSelection) {
+                    gameSelection.style.display = 'none';
+                } else {
+                    document.querySelector('.game-selection').style.display = 'none';
+                }
+                
+                // Show game container
+                const gameContainer = document.getElementById('game-container');
+                if (gameContainer) {
+                    gameContainer.style.display = 'block';
+                }
+                
+                // Update UI for game type
+                this.updateUIForGameType(gameType);
+            } else {
+                console.error(`Failed to select game: ${gameType}`);
+                this.showError("Failed to start game. Please try again.");
             }
-            
-            // Show game container
-            const gameContainer = document.getElementById('game-container');
-            if (gameContainer) {
-                gameContainer.style.display = 'block';
-            }
-            
-            // Update UI for game type
-            this.updateUIForGameType(gameType);
-        } else {
-            console.error(`Failed to select game: ${gameType}`);
-            this.showError("Failed to start game. Please try again.");
+        } catch (error) {
+            console.error(`Error selecting game: ${gameType}`, error);
+            this.showError("Error starting game. Please refresh and try again.");
         }
     }
 
     enableGameSelection() {
         console.log("Enabling game selection buttons");
-        const blackjackBtn = document.getElementById('blackjack-btn');
-        const pokerBtn = document.getElementById('poker-btn');
+        const buttons = document.querySelectorAll('.game-btn');
         
-        if (blackjackBtn && pokerBtn) {
-            blackjackBtn.disabled = false;
-            pokerBtn.disabled = false;
+        if (buttons && buttons.length) {
+            buttons.forEach(button => {
+                button.disabled = false;
+            });
+            console.log("Game selection buttons enabled");
         } else {
             console.error("Game selection buttons not found");
         }

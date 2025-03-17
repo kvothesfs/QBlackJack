@@ -130,7 +130,7 @@ export class TexasHoldEm {
         this.reset();
         
         // Clear previous cards from scene
-        if (this.gameManager.sceneManager) {
+        if (this.gameManager && this.gameManager.sceneManager) {
             this.gameManager.sceneManager.clearScene();
         }
         
@@ -150,190 +150,191 @@ export class TexasHoldEm {
     }
 
     async dealInitialCards() {
-        console.log("Dealing initial cards for Texas Hold'Em");
+        console.log("Dealing initial cards for Texas Hold Em");
         
-        // Shuffle deck
+        // Shuffle the deck first
         this.shuffleDeck();
         
-        // Deal two cards to player
-        await this.dealCardToPlayer();
-        await this.dealCardToPlayer();
+        // Deal two cards to the player
+        for (let i = 0; i < 2; i++) {
+            const card = this.deck.pop();
+            this.playerHand.push(card);
+            
+            // Position player cards at the bottom of the screen
+            const x = -1 + (i * 1.5); // Space cards horizontally
+            const position = new THREE.Vector3(x, 0.1, 2);
+            
+            if (this.gameManager && this.gameManager.sceneManager) {
+                console.log(`Adding player card ${i+1} at position (${position.x}, ${position.y}, ${position.z})`);
+                const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, true);
+                
+                if (cardMesh) {
+                    // Flip card face up
+                    setTimeout(() => {
+                        card.flip(true);
+                    }, 300 * (i + 1)); // Stagger the flips
+                    
+                    // Create quantum state for the card (superposition)
+                    if (Math.random() < 0.3) { // 30% chance for superposition
+                        setTimeout(() => {
+                            card.applySuperposition();
+                        }, 1000 + 500 * i);
+                    }
+                } else {
+                    console.error("Failed to add player card to scene");
+                }
+            }
+        }
         
-        // Deal two cards to dealer (face down)
-        await this.dealCardToDealer(false);
-        await this.dealCardToDealer(false);
-        
-        // Small and big blinds
-        this.pot = 15; // 5 for small blind, 10 for big blind
-        this.playerChips -= 5;
-        this.dealerChips -= 10;
+        // Deal two cards to the dealer (AI opponent)
+        for (let i = 0; i < 2; i++) {
+            const card = this.deck.pop();
+            this.dealerHand.push(card);
+            
+            // Position dealer cards at the top of the screen
+            const x = -1 + (i * 1.5); // Space cards horizontally
+            const position = new THREE.Vector3(x, 0.1, -2);
+            
+            if (this.gameManager && this.gameManager.sceneManager) {
+                console.log(`Adding dealer card ${i+1} at position (${position.x}, ${position.y}, ${position.z})`);
+                const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
+                
+                if (cardMesh) {
+                    // Initially face down
+                    card.flip(false);
+                } else {
+                    console.error("Failed to add dealer card to scene");
+                }
+            }
+        }
         
         // Update UI
-        if (this.gameManager.uiManager) {
-            this.gameManager.uiManager.updatePlayerChips(this.playerChips);
-            this.gameManager.uiManager.updatePotAmount(this.pot);
+        if (this.gameManager && this.gameManager.uiManager) {
+            this.gameManager.uiManager.updateStatus("Your turn. Place your bet.");
         }
-    }
-
-    async dealCardToPlayer() {
-        if (this.deck.length === 0) {
-            console.error("No cards left in deck");
-            return null;
-        }
-        
-        // Get a card from the deck
-        const card = this.deck.pop();
-        
-        // Add to player's hand
-        this.playerHand.push(card);
-        this.playerCardCount++;
-        
-        // Set card position on the table
-        // Position player cards at bottom center, spread horizontally
-        const xOffset = -1 + (this.playerCardCount - 1) * 1.5;
-        const position = new THREE.Vector3(xOffset, 0.1, 2); // Positioned in front of the player
-        
-        // Add card to scene
-        if (this.gameManager.sceneManager) {
-            const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, true);
-            
-            // Flip card face up
-            if (cardMesh) {
-                setTimeout(() => {
-                    card.flip(true);
-                }, 300);
-            }
-        }
-        
-        return card;
-    }
-
-    async dealCardToDealer(faceUp = false) {
-        if (this.deck.length === 0) {
-            console.error("No cards left in deck");
-            return null;
-        }
-        
-        // Get a card from the deck
-        const card = this.deck.pop();
-        
-        // Add to dealer's hand
-        this.dealerHand.push(card);
-        this.dealerCardCount++;
-        
-        // Set card position on the table
-        // Position dealer cards at top center, spread horizontally
-        const xOffset = -1 + (this.dealerCardCount - 1) * 1.5;
-        const position = new THREE.Vector3(xOffset, 0.1, -2); // Positioned on the dealer's side
-        
-        // Add card to scene
-        if (this.gameManager.sceneManager) {
-            const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
-            
-            // Flip card face up or down based on parameter
-            if (cardMesh) {
-                setTimeout(() => {
-                    card.flip(faceUp);
-                }, 300);
-            }
-        }
-        
-        return card;
-    }
-
-    async dealCommunityCard(faceUp = true) {
-        if (this.deck.length === 0) {
-            console.error("No cards left in deck");
-            return null;
-        }
-        
-        // Get a card from the deck
-        const card = this.deck.pop();
-        
-        // Add to community cards
-        this.communityCards.push(card);
-        this.communityCardCount++;
-        
-        // Set card position on the table
-        // Position community cards in the center, spread horizontally
-        const xOffset = -3 + (this.communityCardCount - 1) * 1.5;
-        const position = new THREE.Vector3(xOffset, 0.1, 0); // Positioned in the center of the table
-        
-        // Add card to scene
-        if (this.gameManager.sceneManager) {
-            const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
-            
-            // Flip card face up or down based on parameter
-            if (cardMesh) {
-                setTimeout(() => {
-                    card.flip(faceUp);
-                }, 300);
-            }
-        }
-        
-        return card;
     }
 
     async dealFlop() {
-        if (this.gameState !== 'pre-flop') {
-            console.error("Cannot deal flop - wrong game state:", this.gameState);
-            return false;
-        }
+        console.log("Dealing the flop");
         
-        // Deal three community cards (the flop)
-        await this.dealCommunityCard();
-        await this.dealCommunityCard();
-        await this.dealCommunityCard();
+        // Deal three community cards
+        for (let i = 0; i < 3; i++) {
+            const card = this.deck.pop();
+            this.communityCards.push(card);
+            
+            // Position in the center of the table
+            const flopStartX = -2;
+            const position = new THREE.Vector3(flopStartX + (i * 1.5), 0.1, 0);
+            
+            if (this.gameManager && this.gameManager.sceneManager) {
+                console.log(`Adding flop card ${i+1} at position (${position.x}, ${position.y}, ${position.z})`);
+                const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
+                
+                if (cardMesh) {
+                    // Flip card face up with a delay
+                    setTimeout(() => {
+                        card.flip(true);
+                    }, 300 * (i + 1));
+                    
+                    // Create quantum state for some cards
+                    if (Math.random() < 0.3) { // 30% chance
+                        setTimeout(() => {
+                            card.applySuperposition();
+                        }, 1000 + 500 * i);
+                    }
+                } else {
+                    console.error("Failed to add flop card to scene");
+                }
+            }
+        }
         
         // Update game state
         this.gameState = 'flop';
         
         // Update UI
-        if (this.gameManager.uiManager) {
-            this.gameManager.uiManager.updateStatus("Flop dealt. Place your bet, call, or fold.");
+        if (this.gameManager && this.gameManager.uiManager) {
+            this.gameManager.uiManager.updateStatus("Flop dealt. Your turn.");
         }
-        
-        return true;
     }
-
+    
     async dealTurn() {
-        if (this.gameState !== 'flop') {
-            console.error("Cannot deal turn - wrong game state:", this.gameState);
-            return false;
-        }
+        console.log("Dealing the turn");
         
-        // Deal one community card (the turn)
-        await this.dealCommunityCard();
+        // Deal the turn card (4th community card)
+        const card = this.deck.pop();
+        this.communityCards.push(card);
+        
+        // Position next to the flop
+        const position = new THREE.Vector3(2.5, 0.1, 0);
+        
+        if (this.gameManager && this.gameManager.sceneManager) {
+            console.log(`Adding turn card at position (${position.x}, ${position.y}, ${position.z})`);
+            const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
+            
+            if (cardMesh) {
+                // Flip card face up
+                setTimeout(() => {
+                    card.flip(true);
+                }, 300);
+                
+                // Create quantum state
+                if (Math.random() < 0.3) { // 30% chance
+                    setTimeout(() => {
+                        card.applySuperposition();
+                    }, 1000);
+                }
+            } else {
+                console.error("Failed to add turn card to scene");
+            }
+        }
         
         // Update game state
         this.gameState = 'turn';
         
         // Update UI
-        if (this.gameManager.uiManager) {
-            this.gameManager.uiManager.updateStatus("Turn dealt. Place your bet, call, or fold.");
+        if (this.gameManager && this.gameManager.uiManager) {
+            this.gameManager.uiManager.updateStatus("Turn dealt. Your turn.");
         }
-        
-        return true;
     }
-
+    
     async dealRiver() {
-        if (this.gameState !== 'turn') {
-            console.error("Cannot deal river - wrong game state:", this.gameState);
-            return false;
-        }
+        console.log("Dealing the river");
         
-        // Deal one community card (the river)
-        await this.dealCommunityCard();
+        // Deal the river card (5th community card)
+        const card = this.deck.pop();
+        this.communityCards.push(card);
+        
+        // Position next to the turn card
+        const position = new THREE.Vector3(4, 0.1, 0);
+        
+        if (this.gameManager && this.gameManager.sceneManager) {
+            console.log(`Adding river card at position (${position.x}, ${position.y}, ${position.z})`);
+            const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
+            
+            if (cardMesh) {
+                // Flip card face up
+                setTimeout(() => {
+                    card.flip(true);
+                }, 300);
+                
+                // Create quantum state
+                if (Math.random() < 0.3) { // 30% chance
+                    setTimeout(() => {
+                        card.applySuperposition();
+                    }, 1000);
+                }
+            } else {
+                console.error("Failed to add river card to scene");
+            }
+        }
         
         // Update game state
         this.gameState = 'river';
         
         // Update UI
-        if (this.gameManager.uiManager) {
+        if (this.gameManager && this.gameManager.uiManager) {
             this.gameManager.uiManager.updateStatus("River dealt. Final betting round.");
         }
-        
-        return true;
     }
 
     pokerBet(amount) {

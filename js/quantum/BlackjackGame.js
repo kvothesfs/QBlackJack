@@ -162,6 +162,8 @@ export class BlackjackGame {
             return null;
         }
         
+        console.log("Dealing card to player");
+        
         // Get a card from the deck
         const card = this.deck.pop();
         
@@ -175,15 +177,22 @@ export class BlackjackGame {
         const position = new THREE.Vector3(xOffset, 0.1, 2); // Positioned in front of the player
         
         // Add card to scene
-        if (this.gameManager.sceneManager) {
+        if (this.gameManager && this.gameManager.sceneManager) {
+            console.log(`Adding player card to scene at position (${position.x}, ${position.y}, ${position.z})`);
             const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, true);
             
-            // Flip card face up
             if (cardMesh) {
+                // Flip card face up after a short delay
                 setTimeout(() => {
                     card.flip(true);
                 }, 300);
+                
+                console.log("Player card added successfully");
+            } else {
+                console.error("Failed to add player card to scene");
             }
+        } else {
+            console.error("Cannot add player card - SceneManager not available");
         }
         
         // Update hand value
@@ -198,6 +207,8 @@ export class BlackjackGame {
             return null;
         }
         
+        console.log("Dealing card to dealer, face up:", faceUp);
+        
         // Get a card from the deck
         const card = this.deck.pop();
         
@@ -211,15 +222,22 @@ export class BlackjackGame {
         const position = new THREE.Vector3(xOffset, 0.1, -2); // Positioned on the dealer's side
         
         // Add card to scene
-        if (this.gameManager.sceneManager) {
+        if (this.gameManager && this.gameManager.sceneManager) {
+            console.log(`Adding dealer card to scene at position (${position.x}, ${position.y}, ${position.z})`);
             const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
             
-            // Flip card face up or down based on parameter
             if (cardMesh) {
+                // Flip card face up or down based on parameter
                 setTimeout(() => {
                     card.flip(faceUp);
                 }, 300);
+                
+                console.log("Dealer card added successfully, face up:", faceUp);
+            } else {
+                console.error("Failed to add dealer card to scene");
             }
+        } else {
+            console.error("Cannot add dealer card - SceneManager not available");
         }
         
         // Update hand value

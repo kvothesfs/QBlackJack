@@ -229,15 +229,38 @@ class QuantumBlackJack {
 // Main initialization and loading handling
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        console.log("DOM loaded, initializing game");
+        console.log("DOM loaded, starting game initialization");
         
-        // Create and initialize game
-        const game = new QuantumBlackJack();
+        // Show loading screen
+        const loadingScreen = document.getElementById('loading-screen');
+        if (!loadingScreen) {
+            console.warn("Loading screen element not found, creating dynamically");
+            
+            // Create loading screen dynamically if not present
+            const newLoadingScreen = document.createElement('div');
+            newLoadingScreen.id = 'loading-screen';
+            newLoadingScreen.innerHTML = `
+                <div id="loading-content">
+                    <h1>Quantum Card Games</h1>
+                    <div id="loading-bar-container">
+                        <div id="loading-bar"></div>
+                    </div>
+                    <div id="loading-text">Loading assets...</div>
+                    <button id="start-game-btn" style="display:none;">START GAME</button>
+                </div>
+            `;
+            document.body.appendChild(newLoadingScreen);
+        }
+        
+        // Create and initialize game instance
+        window.qbjGame = new QuantumBlackJack();
         
         // Set up start button click handler
         const startButton = document.getElementById('start-game-btn');
         if (startButton) {
             startButton.addEventListener('click', () => {
+                console.log("Start button clicked");
+                
                 // Hide loading screen
                 const loadingScreen = document.getElementById('loading-screen');
                 if (loadingScreen) {
@@ -245,11 +268,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 // Show game selection
-                const gameSelection = document.getElementById('game-selection');
+                const gameSelection = document.querySelector('.game-selection');
                 if (gameSelection) {
+                    console.log("Showing game selection");
                     gameSelection.style.display = 'flex';
+                } else {
+                    console.error("Game selection element not found");
                 }
             });
+        } else {
+            console.error("Start button not found");
         }
     } catch (error) {
         console.error("Failed to initialize game:", error);
