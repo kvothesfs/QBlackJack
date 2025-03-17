@@ -126,13 +126,17 @@ class QuantumBlackJack {
                         clearInterval(interval);
                         console.log("Loading progress complete");
                         
-                        // Show the start button directly since UIManager might not be initialized yet
+                        // Show the start button directly
                         if (loadingText) {
-                            loadingText.textContent = 'Loading complete!';
+                            loadingText.textContent = 'Loading complete! Click "START GAME" to begin.';
                         }
                         
                         if (startButton) {
+                            console.log("Displaying start button");
                             startButton.style.display = 'block';
+                            startButton.style.margin = '30px auto';
+                        } else {
+                            console.warn("Start button element not found");
                         }
                         
                         setTimeout(resolve, 500); // Add a small delay after reaching 100%

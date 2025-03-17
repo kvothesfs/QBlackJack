@@ -136,6 +136,8 @@ export class UIManager {
     }
     
     onStartGameClick() {
+        console.log("Start button clicked");
+        
         // Hide loading screen and show game UI
         if (this.loadingScreen) {
             this.loadingScreen.style.display = 'none';
@@ -149,10 +151,19 @@ export class UIManager {
             this.statusDisplay.style.display = 'block';
         }
         
-        // Start background music (user interaction allows audio to play)
+        // Initialize and start audio (user interaction allows audio to play)
         if (this.soundManager) {
+            // Initialize audio since this is a user interaction
+            this.soundManager.initAudio();
+            
+            // Make sure the audio context is resumed
             this.soundManager.resumeAudioContext();
-            this.soundManager.startBackgroundMusic();
+            
+            // Start background music with a slight delay to ensure context is ready
+            setTimeout(() => {
+                this.soundManager.startBackgroundMusic();
+                console.log("Background music started");
+            }, 100);
         }
         
         // Show tutorial
