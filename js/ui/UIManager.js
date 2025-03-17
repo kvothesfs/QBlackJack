@@ -8,6 +8,11 @@ export class UIManager {
     }
 
     setupUI() {
+        // Game selection elements
+        this.loadingScreen = document.getElementById('loading-screen');
+        this.startGameBtn = document.getElementById('start-game-btn');
+        this.gameSelection = document.getElementById('game-selection');
+        
         // Game selection buttons
         this.blackjackBtn = document.getElementById('blackjack-btn');
         this.pokerBtn = document.getElementById('poker-btn');
@@ -32,16 +37,24 @@ export class UIManager {
         
         // Common UI elements
         this.gameContainer = document.getElementById('game-container');
-        this.loadingScreen = document.getElementById('loading-screen');
-        this.startGameBtn = document.getElementById('start-game-btn');
         this.statusDisplay = document.getElementById('status-display');
     }
 
     setupEventListeners() {
+        // Start game button
+        if (this.startGameBtn) {
+            this.startGameBtn.addEventListener('click', () => {
+                this.hideLoadingScreen();
+                this.showGameSelection();
+            });
+        }
+        
         // Game selection
         if (this.blackjackBtn) {
             this.blackjackBtn.addEventListener('click', () => {
                 this.gameManager.setGameType('blackjack');
+                this.hideGameSelection();
+                this.showGameUI();
                 this.updateUIForGameType('blackjack');
             });
         }
@@ -49,6 +62,8 @@ export class UIManager {
         if (this.pokerBtn) {
             this.pokerBtn.addEventListener('click', () => {
                 this.gameManager.setGameType('poker');
+                this.hideGameSelection();
+                this.showGameUI();
                 this.updateUIForGameType('poker');
             });
         }
@@ -146,14 +161,29 @@ export class UIManager {
                 this.updateStatus(`Winner: ${winner}`);
             });
         }
-        
-        // Start game button
-        if (this.startGameBtn) {
-            this.startGameBtn.addEventListener('click', () => {
-                this.hideLoadingScreen();
-                this.showGameUI();
-                this.gameManager.startNewGame();
-            });
+    }
+
+    hideLoadingScreen() {
+        if (this.loadingScreen) {
+            this.loadingScreen.style.display = 'none';
+        }
+    }
+
+    showGameSelection() {
+        if (this.gameSelection) {
+            this.gameSelection.style.display = 'block';
+        }
+    }
+
+    hideGameSelection() {
+        if (this.gameSelection) {
+            this.gameSelection.style.display = 'none';
+        }
+    }
+
+    showGameUI() {
+        if (this.gameContainer) {
+            this.gameContainer.style.display = 'block';
         }
     }
 
@@ -184,18 +214,6 @@ export class UIManager {
     updateStatus(message) {
         if (this.statusDisplay) {
             this.statusDisplay.textContent = message;
-        }
-    }
-
-    hideLoadingScreen() {
-        if (this.loadingScreen) {
-            this.loadingScreen.style.display = 'none';
-        }
-    }
-
-    showGameUI() {
-        if (this.gameContainer) {
-            this.gameContainer.style.display = 'block';
         }
     }
 } 

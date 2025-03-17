@@ -501,34 +501,54 @@ export class QuantumCard {
         ctx.lineWidth = 10;
         ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
         
-        // Card suit and value
-        ctx.font = 'bold 120px Arial';
-        ctx.textAlign = 'center';
-        
         // Set color based on suit
-        if (cardState.suit === 'hearts' || cardState.suit === 'diamonds') {
-            ctx.fillStyle = '#ff0000'; // Red
-        } else {
-            ctx.fillStyle = '#000000'; // Black
-        }
+        const isRed = cardState.suit === 'hearts' || cardState.suit === 'diamonds';
+        ctx.fillStyle = isRed ? '#ff0000' : '#000000';
         
-        // Draw value
+        // Draw value in top-left and bottom-right
+        ctx.font = 'bold 80px Arial';
+        ctx.textAlign = 'left';
+        
         let valueText = cardState.value;
         if (valueText === 'ace') valueText = 'A';
         else if (valueText === 'king') valueText = 'K';
         else if (valueText === 'queen') valueText = 'Q';
         else if (valueText === 'jack') valueText = 'J';
         
-        ctx.fillText(valueText.toUpperCase(), canvas.width / 2, 150);
+        // Top-left value
+        ctx.fillText(valueText.toUpperCase(), 40, 100);
         
-        // Draw suit
+        // Bottom-right value (upside down)
+        ctx.save();
+        ctx.translate(canvas.width - 40, canvas.height - 40);
+        ctx.rotate(Math.PI);
+        ctx.fillText(valueText.toUpperCase(), 0, 0);
+        ctx.restore();
+        
+        // Draw suit symbol
         let suitSymbol = '♠'; // Default spades
         if (cardState.suit === 'hearts') suitSymbol = '♥';
         else if (cardState.suit === 'diamonds') suitSymbol = '♦';
         else if (cardState.suit === 'clubs') suitSymbol = '♣';
         
+        // Center suit
         ctx.font = 'bold 240px Arial';
+        ctx.textAlign = 'center';
         ctx.fillText(suitSymbol, canvas.width / 2, canvas.height / 2 + 50);
+        
+        // Draw small suit in top-left and bottom-right
+        ctx.font = 'bold 60px Arial';
+        ctx.textAlign = 'left';
+        
+        // Top-left suit
+        ctx.fillText(suitSymbol, 40, 160);
+        
+        // Bottom-right suit (upside down)
+        ctx.save();
+        ctx.translate(canvas.width - 40, canvas.height - 100);
+        ctx.rotate(Math.PI);
+        ctx.fillText(suitSymbol, 0, 0);
+        ctx.restore();
         
         // Create texture from canvas
         const texture = new THREE.Texture(canvas);
