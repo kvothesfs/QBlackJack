@@ -99,17 +99,16 @@ export class GameManager extends EventEmitter {
             }
         }
         
-        // Update all cards
-        [...this.playerCards, ...this.dealerCards].forEach(card => {
-            if (card && typeof card.update === 'function') {
-                card.update(deltaTime);
-            }
-        });
-        
-        if (this.gameType === 'blackjack') {
+        // Update the active game
+        if (this.gameType === 'blackjack' && this.blackjackGame) {
             this.blackjackGame.update(deltaTime);
-        } else if (this.gameType === 'poker') {
+        } else if (this.gameType === 'poker' && this.pokerGame) {
             this.pokerGame.update(deltaTime);
+        }
+
+        // Update scene manager
+        if (this.sceneManager) {
+            this.sceneManager.update(deltaTime);
         }
     }
 

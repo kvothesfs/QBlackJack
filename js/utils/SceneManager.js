@@ -456,4 +456,51 @@ export class SceneManager {
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
     }
+
+    clearScene() {
+        // Remove all objects from the scene
+        while (this.scene.children.length > 0) {
+            const object = this.scene.children[0];
+            if (object instanceof THREE.Mesh) {
+                // Dispose of materials and geometries
+                if (object.material) {
+                    if (Array.isArray(object.material)) {
+                        object.material.forEach(material => {
+                            if (material.map) material.map.dispose();
+                            material.dispose();
+                        });
+                    } else {
+                        if (object.material.map) object.material.map.dispose();
+                        object.material.dispose();
+                    }
+                }
+                if (object.geometry) {
+                    object.geometry.dispose();
+                }
+            }
+            this.scene.remove(object);
+        }
+
+        // Clear interactive objects
+        this.interactiveObjects = [];
+
+        // Re-add the camera and lights
+        this.scene.add(this.camera);
+        this.setupLights();
+
+        // Re-add orbit controls
+        this.setupOrbitControls();
+
+        // Create new card groups
+        this.playerCardsGroup = new THREE.Group();
+        this.playerCardsGroup.position.set(0, 0.5, 3);
+        this.scene.add(this.playerCardsGroup);
+
+        this.dealerCardsGroup = new THREE.Group();
+        this.dealerCardsGroup.position.set(0, 0.5, -3);
+        this.scene.add(this.dealerCardsGroup);
+
+        // Re-add the table
+        this.setupTable();
+    }
 } 

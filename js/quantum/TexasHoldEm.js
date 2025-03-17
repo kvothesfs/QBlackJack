@@ -210,4 +210,39 @@ export class TexasHoldEm {
             return 'tie';
         }
     }
+
+    update(deltaTime) {
+        // Update all community cards
+        for (const card of this.communityCards) {
+            if (card && card.update) {
+                card.update(deltaTime);
+            }
+        }
+
+        // Update player's hand
+        for (const card of this.playerHand) {
+            if (card && card.update) {
+                card.update(deltaTime);
+            }
+        }
+
+        // Update dealer's hand
+        for (const card of this.dealerHand) {
+            if (card && card.update) {
+                card.update(deltaTime);
+            }
+        }
+
+        // Update game state if needed
+        if (this.gameState === 'betting') {
+            this.updateUI();
+        }
+    }
+
+    updateUI() {
+        // Update pot and player chips display
+        this.gameManager.uiManager.updateStatus(
+            `Pot: ${this.pot} | Your chips: ${this.playerChips}`
+        );
+    }
 } 

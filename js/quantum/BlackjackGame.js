@@ -199,4 +199,25 @@ export class BlackjackGame {
         
         this.gameManager.uiManager.updateStatus(`Player's hand: ${displayValue}`);
     }
+
+    update(deltaTime) {
+        // Update all player cards
+        for (const card of this.playerCards) {
+            if (card && card.update) {
+                card.update(deltaTime);
+            }
+        }
+
+        // Update all dealer cards
+        for (const card of this.dealerCards) {
+            if (card && card.update) {
+                card.update(deltaTime);
+            }
+        }
+
+        // Update game state if needed
+        if (this.gameState === 'player_turn') {
+            this.updateHandValue();
+        }
+    }
 } 
