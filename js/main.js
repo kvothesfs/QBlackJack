@@ -231,56 +231,86 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         console.log("DOM loaded, starting game initialization");
         
-        // Show loading screen
-        const loadingScreen = document.getElementById('loading-screen');
-        if (!loadingScreen) {
-            console.warn("Loading screen element not found, creating dynamically");
-            
-            // Create loading screen dynamically if not present
-            const newLoadingScreen = document.createElement('div');
-            newLoadingScreen.id = 'loading-screen';
-            newLoadingScreen.innerHTML = `
-                <div id="loading-content">
-                    <h1>Quantum Card Games</h1>
-                    <div id="loading-bar-container">
-                        <div id="loading-bar"></div>
-                    </div>
-                    <div id="loading-text">Loading assets...</div>
-                    <button id="start-game-btn" style="display:none;">START GAME</button>
-                </div>
-            `;
-            document.body.appendChild(newLoadingScreen);
-        }
+        // Create loading screen if it doesn't exist
+        ensureLoadingScreenExists();
         
-        // Create and initialize game instance
+        // Global error handler for uncaught errors
+        window.addEventListener('error', (event) => {
+            console.error("Global error caught:", event.error);
+            showErrorMessage("An error occurred: " + event.error.message);
+        });
+
+        // Create game instance - store in global variable for access
         window.qbjGame = new QuantumBlackJack();
+        console.log("QuantumBlackJack instance created");
         
-        // Set up start button click handler
-        const startButton = document.getElementById('start-game-btn');
-        if (startButton) {
-            startButton.addEventListener('click', () => {
-                console.log("Start button clicked");
-                
-                // Hide loading screen
-                const loadingScreen = document.getElementById('loading-screen');
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
-                
-                // Show game selection
-                const gameSelection = document.querySelector('.game-selection');
-                if (gameSelection) {
-                    console.log("Showing game selection");
-                    gameSelection.style.display = 'flex';
-                } else {
-                    console.error("Game selection element not found");
-                }
-            });
-        } else {
-            console.error("Start button not found");
-        }
+        // Set up start button click handler - needed after loading is complete
+        setupStartButton();
+        
     } catch (error) {
         console.error("Failed to initialize game:", error);
-        alert("Failed to start game: " + error.message);
+        showErrorMessage("Failed to start game: " + error.message);
     }
-}); 
+});
+
+// Helper functions for cleaner initialization
+function ensureLoadingScreenExists() {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (!loadingScreen) {
+        console.warn("Loading screen element not found, creating dynamically");
+        
+        // Create loading screen dynamically if not present
+        const newLoadingScreen = document.createElement('div');
+        newLoadingScreen.id = 'loading-screen';
+        newLoadingScreen.innerHTML = `
+            <div id="loading-content">
+                <h1>Quantum Card Games</h1>
+                <div id="loading-bar-container">
+                    <div id="loading-bar"></div>
+                </div>
+                <div id="loading-text">Loading assets...</div>
+                <button id="start-game-btn" style="display:none;">START GAME</button>
+            </div>
+        `;
+        document.body.appendChild(newLoadingScreen);
+    }
+}
+
+function setupStartButton() {
+    const startButton = document.getElementById('start-game-btn');
+    if (startButton) {
+        startButton.addEventListener('click', () => {
+            console.log("Start button clicked");
+            
+            // Hide loading screen
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+            
+            // Show game selection
+            const gameSelection = document.querySelector('.game-selection');
+            if (gameSelection) {
+                console.log("Showing game selection");
+                gameSelection.style.display = 'flex';
+            } else {
+                console.error("Game selection element not found");
+                showErrorMessage("Game selection screen not found. Please refresh the page.");
+            }
+        });
+    } else {
+        console.error("Start button not found");
+    }
+}
+
+function showErrorMessage(message) {
+    // Display error in the loading screen's text element
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) {
+        loadingText.textContent = message;
+        loadingText.style.color = 'red';
+    } else {
+        // Fallback to alert if loading text element not found
+        alert(message);
+    }
+} 

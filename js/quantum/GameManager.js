@@ -99,38 +99,51 @@ export class GameManager extends EventEmitter {
             return false;
         }
         
-        if (!this.initialized) {
-            console.error("GameManager not fully initialized yet");
-            return false;
-        }
-
         this.gameType = type;
         
-        // First clear the scene
         try {
+            // First clear the scene
             console.log("Clearing scene before initializing game");
-            this.sceneManager.clearScene();
+            if (!this.sceneManager.clearScene()) {
+                console.error("Failed to clear scene");
+                return false;
+            }
+            
+            // Initialize the selected game
+            if (type === 'blackjack') {
+                console.log("Initializing Blackjack game");
+                this.gameState = GameState.BETTING;
+                
+                if (!this.blackjackGame) {
+                    console.error("Blackjack game not initialized");
+                    return false;
+                }
+                
+                this.blackjackGame.initialize();
+                this.showTutorial('blackjack');
+                setTimeout(() => this.startNewGame(), 1000); // Start after tutorial begins
+            } else if (type === 'poker') {
+                console.log("Initializing Texas Hold'Em game");
+                this.gameState = GameState.POKER_BETTING;
+                
+                if (!this.pokerGame) {
+                    console.error("Poker game not initialized");
+                    return false;
+                }
+                
+                this.pokerGame.initialize();
+                this.showTutorial('poker');
+                setTimeout(() => this.startNewGame(), 1000); // Start after tutorial begins
+            } else {
+                console.error("Invalid game type:", type);
+                return false;
+            }
+            
+            return true;
         } catch (error) {
-            console.error("Error clearing scene:", error);
+            console.error("Error setting game type:", error);
             return false;
         }
-        
-        // Initialize the selected game
-        if (type === 'blackjack') {
-            console.log("Initializing Blackjack game");
-            this.gameState = GameState.BETTING;
-            this.blackjackGame.initialize();
-            this.showTutorial('blackjack');
-            this.startNewGame(); // Start the game after selection
-        } else if (type === 'poker') {
-            console.log("Initializing Texas Hold'Em game");
-            this.gameState = GameState.POKER_BETTING;
-            this.pokerGame.initialize();
-            this.showTutorial('poker');
-            this.startNewGame(); // Start the game after selection
-        }
-        
-        return true;
     }
 
     showTutorial(gameType) {

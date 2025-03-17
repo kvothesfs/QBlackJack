@@ -152,19 +152,24 @@ export class TexasHoldEm {
     async dealInitialCards() {
         console.log("Dealing initial cards for Texas Hold Em");
         
-        // Shuffle the deck first
-        this.shuffleDeck();
-        
-        // Deal two cards to the player
-        for (let i = 0; i < 2; i++) {
-            const card = this.deck.pop();
-            this.playerHand.push(card);
+        try {
+            // Shuffle the deck first
+            this.shuffleDeck();
             
-            // Position player cards at the bottom of the screen
-            const x = -1 + (i * 1.5); // Space cards horizontally
-            const position = new THREE.Vector3(x, 0.1, 2);
-            
-            if (this.gameManager && this.gameManager.sceneManager) {
+            // Deal two cards to the player
+            for (let i = 0; i < 2; i++) {
+                const card = this.deck.pop();
+                this.playerHand.push(card);
+                
+                // Position player cards at the bottom of the screen
+                const x = -1 + (i * 1.5); // Space cards horizontally
+                const position = new THREE.Vector3(x, 0.1, 2);
+                
+                if (!this.gameManager || !this.gameManager.sceneManager) {
+                    console.error("Cannot add player card - SceneManager not available");
+                    continue; // Skip adding to scene but continue with game logic
+                }
+                
                 console.log(`Adding player card ${i+1} at position (${position.x}, ${position.y}, ${position.z})`);
                 const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, true);
                 
@@ -181,21 +186,24 @@ export class TexasHoldEm {
                         }, 1000 + 500 * i);
                     }
                 } else {
-                    console.error("Failed to add player card to scene");
+                    console.error(`Failed to add player card ${i+1} to scene`);
                 }
             }
-        }
-        
-        // Deal two cards to the dealer (AI opponent)
-        for (let i = 0; i < 2; i++) {
-            const card = this.deck.pop();
-            this.dealerHand.push(card);
             
-            // Position dealer cards at the top of the screen
-            const x = -1 + (i * 1.5); // Space cards horizontally
-            const position = new THREE.Vector3(x, 0.1, -2);
-            
-            if (this.gameManager && this.gameManager.sceneManager) {
+            // Deal two cards to the dealer (AI opponent)
+            for (let i = 0; i < 2; i++) {
+                const card = this.deck.pop();
+                this.dealerHand.push(card);
+                
+                // Position dealer cards at the top of the screen
+                const x = -1 + (i * 1.5); // Space cards horizontally
+                const position = new THREE.Vector3(x, 0.1, -2);
+                
+                if (!this.gameManager || !this.gameManager.sceneManager) {
+                    console.error("Cannot add dealer card - SceneManager not available");
+                    continue; // Skip adding to scene but continue with game logic
+                }
+                
                 console.log(`Adding dealer card ${i+1} at position (${position.x}, ${position.y}, ${position.z})`);
                 const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
                 
@@ -203,14 +211,22 @@ export class TexasHoldEm {
                     // Initially face down
                     card.flip(false);
                 } else {
-                    console.error("Failed to add dealer card to scene");
+                    console.error(`Failed to add dealer card ${i+1} to scene`);
                 }
             }
-        }
-        
-        // Update UI
-        if (this.gameManager && this.gameManager.uiManager) {
-            this.gameManager.uiManager.updateStatus("Your turn. Place your bet.");
+            
+            // Update UI
+            if (this.gameManager && this.gameManager.uiManager) {
+                this.gameManager.uiManager.updateStatus("Your turn. Place your bet.");
+            } else {
+                console.error("Cannot update UI - UIManager not available");
+            }
+            
+            console.log("Initial cards dealt successfully");
+            return true;
+        } catch (error) {
+            console.error("Error dealing initial cards:", error);
+            return false;
         }
     }
 

@@ -19,14 +19,22 @@ export class SceneManager {
 
     async initialize() {
         console.log("Initializing SceneManager");
+        
         if (!this.canvas) {
-            console.error("Canvas element not found");
+            console.error("Cannot initialize SceneManager - Canvas element not found");
             return false;
         }
 
         try {
             // Create scene
             this.scene = new THREE.Scene();
+            console.log("Scene created");
+            
+            if (!this.scene) {
+                console.error("Failed to create Three.js scene");
+                return false;
+            }
+            
             this.scene.background = new THREE.Color(0x000033);
 
             // Create camera
@@ -36,32 +44,95 @@ export class SceneManager {
                 0.1,
                 1000
             );
+            console.log("Camera created");
+            
+            if (!this.camera) {
+                console.error("Failed to create Three.js camera");
+                return false;
+            }
+            
             this.camera.position.set(0, 10, 5);
             this.camera.lookAt(0, 0, 0);
 
             // Create renderer
-            this.renderer = new THREE.WebGLRenderer({
-                canvas: this.canvas,
-                antialias: true
-            });
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
-            this.renderer.shadowMap.enabled = true;
+            try {
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: this.canvas,
+                    antialias: true
+                });
+                console.log("Renderer created");
+                
+                if (!this.renderer) {
+                    console.error("Failed to create Three.js renderer");
+                    return false;
+                }
+                
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+            } catch (rendererError) {
+                console.error("Error creating WebGL renderer:", rendererError);
+                
+                // Create a message on the canvas that WebGL failed
+                const ctx = this.canvas.getContext('2d');
+                if (ctx) {
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    ctx.fillStyle = 'red';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('WebGL not supported', this.canvas.width/2, this.canvas.height/2);
+                    ctx.fillText('Please use a WebGL-compatible browser', this.canvas.width/2, this.canvas.height/2 + 30);
+                }
+                
+                return false;
+            }
 
             // Add lights
             this.addLights();
+            console.log("Lights added");
 
             // Add table
-            await this.addTable();
+            const tableResult = await this.addTable();
+            if (!tableResult) {
+                console.error("Failed to add table to scene");
+                return false;
+            }
+            console.log("Table added");
 
             // Add event listeners
             this.setupMouseEvents();
+            console.log("Mouse events set up");
 
+            // Mark as initialized
             this.initialized = true;
+            this.cardObjects = [];
             console.log("SceneManager initialized successfully");
+            
+            // Start animation
+            this.animate();
+            
             return true;
         } catch (error) {
             console.error("Error initializing SceneManager:", error);
             return false;
+        }
+    }
+    
+    animate() {
+        if (!this.initialized) return;
+        
+        requestAnimationFrame(() => this.animate());
+        
+        try {
+            // Update animations and effects
+            this.update(0.016); // Approximately 60fps
+            
+            // Render the scene
+            if (this.renderer && this.scene && this.camera) {
+                this.renderer.render(this.scene, this.camera);
+            }
+        } catch (error) {
+            console.error("Error in animation loop:", error);
         }
     }
 
@@ -579,36 +650,42 @@ export class SceneManager {
             return;
         }
         
-        // Remove existing entanglement lines
-        const linesToRemove = [];
-        this.scene.children.forEach(child => {
-            if (child && child.userData && child.userData.isEntanglementLine) {
-                linesToRemove.push(child);
-            }
-        });
-        
-        // Remove lines in a separate loop to avoid modifying the array while iterating
-        for (const line of linesToRemove) {
-            this.scene.remove(line);
-            if (line.geometry) line.geometry.dispose();
-            if (line.material) line.material.dispose();
+        // Skip if the cardObjects array is empty
+        if (!this.cardObjects || this.cardObjects.length === 0) {
+            return;
         }
         
-        // Find all entangled cards
-        const entangledCards = [];
-        if (this.cardObjects && this.cardObjects.length > 0) {
+        try {
+            // Remove existing entanglement lines
+            const linesToRemove = [];
+            this.scene.children.forEach(child => {
+                if (child && child.userData && child.userData.isEntanglementLine) {
+                    linesToRemove.push(child);
+                }
+            });
+            
+            // Remove lines in a separate loop to avoid modifying the array while iterating
+            for (const line of linesToRemove) {
+                this.scene.remove(line);
+                if (line.geometry) line.geometry.dispose();
+                if (line.material) line.material.dispose();
+            }
+            
+            // Find all entangled cards
+            const entangledCards = [];
             for (const cardObj of this.cardObjects) {
-                if (cardObj && cardObj.userData && cardObj.userData.card && cardObj.userData.card.entangledWith) {
+                if (cardObj && cardObj.userData && cardObj.userData.card && 
+                    cardObj.userData.card.entangledWith) {
                     entangledCards.push(cardObj.userData.card);
                 }
             }
-        } else {
-            return; // No cards to process
-        }
-        
-        // Draw lines between entangled cards
-        for (const card of entangledCards) {
-            if (card && card.mesh && card.entangledWith && card.entangledWith.mesh) {
+            
+            // Draw lines between entangled cards
+            for (const card of entangledCards) {
+                if (!card || !card.mesh || !card.entangledWith || !card.entangledWith.mesh) {
+                    continue; // Skip if any required object is null
+                }
+                
                 const startPos = card.mesh.position.clone();
                 const endPos = card.entangledWith.mesh.position.clone();
                 
@@ -634,6 +711,8 @@ export class SceneManager {
                 // Add to scene
                 this.scene.add(line);
             }
+        } catch (error) {
+            console.error("Error updating entanglement lines:", error);
         }
     }
 } 

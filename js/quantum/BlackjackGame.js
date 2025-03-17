@@ -164,20 +164,25 @@ export class BlackjackGame {
         
         console.log("Dealing card to player");
         
-        // Get a card from the deck
-        const card = this.deck.pop();
-        
-        // Add to player's hand
-        this.playerHand.push(card);
-        this.playerCardCount++;
-        
-        // Set card position on the table
-        // Cards should be spread horizontally based on the number of cards already dealt
-        const xOffset = -3 + (this.playerCardCount - 1) * 1.5;
-        const position = new THREE.Vector3(xOffset, 0.1, 2); // Positioned in front of the player
-        
-        // Add card to scene
-        if (this.gameManager && this.gameManager.sceneManager) {
+        try {
+            // Get a card from the deck
+            const card = this.deck.pop();
+            
+            // Add to player's hand
+            this.playerHand.push(card);
+            this.playerCardCount++;
+            
+            // Set card position on the table
+            // Cards should be spread horizontally based on the number of cards already dealt
+            const xOffset = -3 + (this.playerCardCount - 1) * 1.5;
+            const position = new THREE.Vector3(xOffset, 0.1, 2); // Positioned in front of the player
+            
+            // Add card to scene
+            if (!this.gameManager || !this.gameManager.sceneManager) {
+                console.error("Cannot add player card - SceneManager not available");
+                return card; // Return card even if we can't add it to scene
+            }
+            
             console.log(`Adding player card to scene at position (${position.x}, ${position.y}, ${position.z})`);
             const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, true);
             
@@ -191,14 +196,15 @@ export class BlackjackGame {
             } else {
                 console.error("Failed to add player card to scene");
             }
-        } else {
-            console.error("Cannot add player card - SceneManager not available");
+            
+            // Update hand value
+            this.updateHandValues();
+            
+            return card;
+        } catch (error) {
+            console.error("Error dealing card to player:", error);
+            return null;
         }
-        
-        // Update hand value
-        this.updateHandValues();
-        
-        return card;
     }
 
     async dealCardToDealer(faceUp = true) {
@@ -209,20 +215,25 @@ export class BlackjackGame {
         
         console.log("Dealing card to dealer, face up:", faceUp);
         
-        // Get a card from the deck
-        const card = this.deck.pop();
-        
-        // Add to dealer's hand
-        this.dealerHand.push(card);
-        this.dealerCardCount++;
-        
-        // Set card position on the table
-        // Cards should be spread horizontally based on the number of cards already dealt
-        const xOffset = -3 + (this.dealerCardCount - 1) * 1.5;
-        const position = new THREE.Vector3(xOffset, 0.1, -2); // Positioned on the dealer's side
-        
-        // Add card to scene
-        if (this.gameManager && this.gameManager.sceneManager) {
+        try {
+            // Get a card from the deck
+            const card = this.deck.pop();
+            
+            // Add to dealer's hand
+            this.dealerHand.push(card);
+            this.dealerCardCount++;
+            
+            // Set card position on the table
+            // Cards should be spread horizontally based on the number of cards already dealt
+            const xOffset = -3 + (this.dealerCardCount - 1) * 1.5;
+            const position = new THREE.Vector3(xOffset, 0.1, -2); // Positioned on the dealer's side
+            
+            // Add card to scene
+            if (!this.gameManager || !this.gameManager.sceneManager) {
+                console.error("Cannot add dealer card - SceneManager not available");
+                return card; // Return card even if we can't add it to scene
+            }
+            
             console.log(`Adding dealer card to scene at position (${position.x}, ${position.y}, ${position.z})`);
             const cardMesh = this.gameManager.sceneManager.addCard(card, position, null, false);
             
@@ -236,14 +247,15 @@ export class BlackjackGame {
             } else {
                 console.error("Failed to add dealer card to scene");
             }
-        } else {
-            console.error("Cannot add dealer card - SceneManager not available");
+            
+            // Update hand value
+            this.updateHandValues();
+            
+            return card;
+        } catch (error) {
+            console.error("Error dealing card to dealer:", error);
+            return null;
         }
-        
-        // Update hand value
-        this.updateHandValues();
-        
-        return card;
     }
 
     updateHandValues() {
