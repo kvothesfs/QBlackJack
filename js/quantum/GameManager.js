@@ -71,7 +71,7 @@ export class GameManager extends EventEmitter {
         
         this.gameType = null;
         
-        // Initialize both games but don't start them yet
+        // Initialize both games
         this.blackjackGame = new BlackjackGame(this);
         this.pokerGame = new TexasHoldEm(this);
         
@@ -1012,9 +1012,11 @@ export class GameManager extends EventEmitter {
         if (type === 'blackjack') {
             this.blackjackGame.initialize();
             this.pokerGame.reset();
+            this.gameState = GameState.WAITING;
         } else if (type === 'poker') {
             this.pokerGame.initialize();
             this.blackjackGame.reset();
+            this.gameState = GameState.WAITING;
         }
     }
 

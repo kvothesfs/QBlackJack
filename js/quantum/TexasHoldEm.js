@@ -2,8 +2,12 @@ import { CardState } from './CardState.js';
 import { QuantumCard } from './QuantumCard.js';
 
 export class TexasHoldEm {
-    constructor(assetLoader) {
-        this.assetLoader = assetLoader;
+    constructor(gameManager) {
+        this.gameManager = gameManager;
+        this.reset();
+    }
+
+    reset() {
         this.deck = [];
         this.communityCards = [];
         this.playerHand = [];
@@ -14,6 +18,12 @@ export class TexasHoldEm {
         this.dealerChips = 1000;
         this.gameState = 'betting'; // betting, flop, turn, river, showdown
         this.initializeDeck();
+    }
+
+    initialize() {
+        this.reset();
+        this.gameManager.sceneManager.clearScene();
+        this.gameManager.sceneManager.setupTable();
     }
 
     initializeDeck() {
@@ -46,13 +56,13 @@ export class TexasHoldEm {
             const playerQuantumCard = new QuantumCard(
                 playerCard,
                 this.deck.pop(), // Alternative state
-                this.assetLoader
+                this.gameManager.assetLoader
             );
             
             const dealerQuantumCard = new QuantumCard(
                 dealerCard,
                 this.deck.pop(), // Alternative state
-                this.assetLoader
+                this.gameManager.assetLoader
             );
             
             this.playerHand.push(playerQuantumCard);
@@ -67,7 +77,7 @@ export class TexasHoldEm {
             const quantumCard = new QuantumCard(
                 card,
                 this.deck.pop(), // Alternative state
-                this.assetLoader
+                this.gameManager.assetLoader
             );
             this.communityCards.push(quantumCard);
         }
@@ -79,7 +89,7 @@ export class TexasHoldEm {
         const quantumCard = new QuantumCard(
             card,
             this.deck.pop(), // Alternative state
-            this.assetLoader
+            this.gameManager.assetLoader
         );
         this.communityCards.push(quantumCard);
     }
@@ -90,7 +100,7 @@ export class TexasHoldEm {
         const quantumCard = new QuantumCard(
             card,
             this.deck.pop(), // Alternative state
-            this.assetLoader
+            this.gameManager.assetLoader
         );
         this.communityCards.push(quantumCard);
     }
@@ -241,8 +251,10 @@ export class TexasHoldEm {
 
     updateUI() {
         // Update pot and player chips display
-        this.gameManager.uiManager.updateStatus(
-            `Pot: ${this.pot} | Your chips: ${this.playerChips}`
-        );
+        if (this.gameManager && this.gameManager.uiManager) {
+            this.gameManager.uiManager.updateStatus(
+                `Pot: ${this.pot} | Your chips: ${this.playerChips}`
+            );
+        }
     }
 } 
