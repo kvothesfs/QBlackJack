@@ -21,7 +21,11 @@ export class GameManager extends EventEmitter {
         this.assetLoader = assetLoader;
         
         // Add the sound listener to the camera
-        this.soundManager.addListenerToCamera(sceneManager.camera);
+        if (sceneManager && sceneManager.camera) {
+            this.soundManager.addListenerToCamera(sceneManager.camera);
+        } else {
+            console.error("Cannot add sound listener to camera: Camera not found in SceneManager");
+        }
         
         // Game variables
         this.money = 1000; // Starting money

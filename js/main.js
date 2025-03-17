@@ -50,13 +50,13 @@ class QuantumBlackJack {
             
             // Set up managers
             console.log("Setting up managers...");
-            this.soundManager = new SoundManager();
+            this.soundManager = new SoundManager(this.assetLoader);
             
             console.log("Creating SceneManager with canvas and assetLoader");
             this.sceneManager = new SceneManager(this.canvas, this.assetLoader);
             
             console.log("Creating GameManager");
-            this.gameManager = new GameManager(this.sceneManager, this.assetLoader, this.soundManager);
+            this.gameManager = new GameManager(this.sceneManager, this.soundManager, this.assetLoader);
             
             console.log("Creating UIManager");
             this.uiManager = new UIManager(this.gameManager, this.soundManager);
