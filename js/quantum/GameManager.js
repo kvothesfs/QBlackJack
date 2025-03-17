@@ -20,11 +20,17 @@ export class GameManager extends EventEmitter {
         this.soundManager = soundManager;
         this.assetLoader = assetLoader;
         
-        // Add the sound listener to the camera
+        // Add the sound listener to the camera - safely check if camera exists
         if (sceneManager && sceneManager.camera) {
-            this.soundManager.addListenerToCamera(sceneManager.camera);
+            try {
+                this.soundManager.addListenerToCamera(sceneManager.camera);
+            } catch (error) {
+                console.error("Failed to add sound listener to camera:", error);
+            }
         } else {
-            console.error("Cannot add sound listener to camera: Camera not found in SceneManager");
+            console.warn("Camera not available yet, will add sound listener when camera is ready");
+            // We'll add the listener later when the camera is available
+            this._pendingListenerAdd = true;
         }
         
         // Game variables
@@ -52,8 +58,37 @@ export class GameManager extends EventEmitter {
         // Set up mouse interactions
         this.setupMouseEvents();
         
+        // Reference to UI manager (will be set later)
+        this.uiManager = null;
+        
         // Last game timestamp for update
         this.lastTime = performance.now();
+    }
+    
+    // Add a method to safely set the UI manager
+    setUIManager(uiManager) {
+        this.uiManager = uiManager;
+    }
+    
+    // Add a method to update the camera ref if it wasn't available initially
+    update(deltaTime) {
+        // If we need to add the listener to the camera and now the camera is available
+        if (this._pendingListenerAdd && this.sceneManager && this.sceneManager.camera) {
+            try {
+                this.soundManager.addListenerToCamera(this.sceneManager.camera);
+                this._pendingListenerAdd = false;
+                console.log("Sound listener added to camera");
+            } catch (error) {
+                console.error("Failed to add sound listener to camera during update:", error);
+            }
+        }
+        
+        // Update all cards
+        [...this.playerCards, ...this.dealerCards].forEach(card => {
+            if (card && typeof card.update === 'function') {
+                card.update(deltaTime);
+            }
+        });
     }
 
     setupMouseEvents() {
@@ -627,35 +662,169 @@ export class GameManager extends EventEmitter {
         this.updateHandValue();
     }
 
-    update() {
-        // Calculate delta time
-        const now = performance.now();
-        const deltaTime = (now - this.lastTime) / 1000; // Convert to seconds
-        this.lastTime = now;
-        
-        // Update card animations
-        [...this.playerCards, ...this.dealerCards].forEach(card => {
-            card.update(deltaTime);
-        });
-        
-        // Update entanglement line if it exists
-        if (this.sceneManager.entanglementLine) {
-            const entangledCards = this.playerCards.filter(card => card.entangledWith);
-            if (entangledCards.length >= 2) {
-                // Find pairs of entangled cards
-                for (let i = 0; i < entangledCards.length; i++) {
-                    for (let j = i + 1; j < entangledCards.length; j++) {
-                        if (entangledCards[i].entangledWith === entangledCards[j]) {
-                            this.sceneManager.updateEntanglementLine(entangledCards[i], entangledCards[j]);
-                            break;
-                        }
-                    }
-                }
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Methods called from UI
+    playerHit() {
+        if (this.gameState === GameState.PLAYER_TURN) {
+            this.dealCard(false);
+            
+            // Play card sound
+            if (this.soundManager) {
+                this.soundManager.playCardPlaceSound();
+            }
+            
+            // Check if player busts
+            const playerValue = this.getHandValue(this.playerCards);
+            if (playerValue > 21) {
+                this.gameState = GameState.RESOLVING;
+                setTimeout(() => this.endGame('dealer'), 1000);
+            }
+            
+            // Update UI
+            if (this.uiManager) {
+                this.uiManager.updateHandValues(playerValue, this.getHandValue(this.dealerCards));
             }
         }
     }
-
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    
+    playerStand() {
+        if (this.gameState === GameState.PLAYER_TURN) {
+            this.gameState = GameState.DEALER_TURN;
+            this.dealerPlay();
+        }
+    }
+    
+    applySuperposition() {
+        if (this.gameState === GameState.PLAYER_TURN && this.selectedCard) {
+            // Check if card is already in superposition
+            if (this.selectedCard.isInSuperposition) {
+                console.log("Card is already in superposition");
+                return;
+            }
+            
+            // Put card in superposition
+            this.selectedCard.putInSuperposition();
+            
+            // Play superposition sound
+            if (this.soundManager) {
+                this.soundManager.playSuperpositionSound();
+            }
+            
+            // Update UI
+            if (this.uiManager) {
+                const superposedCards = this.playerCards.filter(c => c.isInSuperposition).length;
+                const entangledCards = this.playerCards.filter(c => c.isEntangled).length / 2;
+                this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
+            }
+        }
+    }
+    
+    applyEntanglement() {
+        if (this.gameState !== GameState.PLAYER_TURN) return;
+        
+        if (!this.selectedCard) {
+            console.log("Select a card first");
+            return;
+        }
+        
+        // First card selected for entanglement
+        if (!this.cardForEntanglement) {
+            // Check if card is in superposition
+            if (!this.selectedCard.isInSuperposition) {
+                console.log("Card must be in superposition to entangle");
+                return;
+            }
+            
+            // Set as first card for entanglement
+            this.cardForEntanglement = this.selectedCard;
+            this.cardForEntanglement.highlight(true);
+            console.log("First card selected for entanglement");
+        } 
+        // Second card selected, complete entanglement
+        else if (this.selectedCard !== this.cardForEntanglement) {
+            // Check if second card is in superposition
+            if (!this.selectedCard.isInSuperposition) {
+                console.log("Second card must also be in superposition");
+                this.cardForEntanglement.highlight(false);
+                this.cardForEntanglement = null;
+                return;
+            }
+            
+            // Entangle the cards
+            this.cardForEntanglement.entangleWith(this.selectedCard);
+            this.cardForEntanglement.highlight(false);
+            
+            // Play entanglement sound
+            if (this.soundManager) {
+                this.soundManager.playEntanglementSound();
+            }
+            
+            // Reset entanglement selection
+            this.cardForEntanglement = null;
+            
+            // Update UI
+            if (this.uiManager) {
+                const superposedCards = this.playerCards.filter(c => c.isInSuperposition).length;
+                const entangledCards = this.playerCards.filter(c => c.isEntangled).length / 2;
+                this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
+            }
+        } 
+        // Same card selected again, cancel entanglement
+        else {
+            this.cardForEntanglement.highlight(false);
+            this.cardForEntanglement = null;
+            console.log("Entanglement canceled");
+        }
+    }
+    
+    measureCard() {
+        if (this.gameState === GameState.PLAYER_TURN && this.selectedCard) {
+            // Check if card is in superposition
+            if (!this.selectedCard.isInSuperposition) {
+                console.log("Card is not in superposition");
+                return;
+            }
+            
+            // Measure the card
+            this.selectedCard.collapse();
+            
+            // Play collapse sound
+            if (this.soundManager) {
+                this.soundManager.playCollapseSound();
+            }
+            
+            // Update UI
+            if (this.uiManager) {
+                const superposedCards = this.playerCards.filter(c => c.isInSuperposition).length;
+                const entangledCards = this.playerCards.filter(c => c.isEntangled).length / 2;
+                this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
+                this.uiManager.updateHandValues(this.getHandValue(this.playerCards), this.getHandValue(this.dealerCards));
+            }
+        }
+    }
+    
+    startNewGame() {
+        // Clear cards
+        this.clearTable();
+        
+        // Reset state
+        this.gameState = GameState.PLAYER_TURN;
+        
+        // Deal cards
+        this.dealInitialCards();
+        
+        // Update UI
+        if (this.uiManager) {
+            const playerValue = this.getHandValue(this.playerCards);
+            const dealerValue = this.getHandValue(this.dealerCards);
+            this.uiManager.updateHandValues(playerValue, dealerValue);
+            
+            const superposedCards = this.playerCards.filter(c => c.isInSuperposition).length;
+            const entangledCards = this.playerCards.filter(c => c.isEntangled).length / 2;
+            this.uiManager.updateQuantumCounts(superposedCards, entangledCards);
+        }
     }
 } 
