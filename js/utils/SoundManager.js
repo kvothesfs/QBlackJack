@@ -110,6 +110,9 @@ export class SoundManager {
     }
 
     startBackgroundMusic() {
+        // Make sure audio context is running
+        this.resumeAudioContext();
+        
         // Create vaporwave style background music
         const musicSound = new THREE.Audio(this.listener);
         
@@ -764,5 +767,21 @@ export class SoundManager {
         }
         
         return this.soundEnabled;
+    }
+
+    resumeAudioContext() {
+        // Resume the audio context after user interaction
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            try {
+                console.log("Resuming audio context...");
+                this.audioContext.resume().then(() => {
+                    console.log("Audio context resumed successfully!");
+                }).catch(error => {
+                    console.error("Failed to resume audio context:", error);
+                });
+            } catch (error) {
+                console.error("Error resuming audio context:", error);
+            }
+        }
     }
 } 

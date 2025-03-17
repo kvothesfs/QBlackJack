@@ -41,6 +41,9 @@ export class UIManager {
         this.tutorialContent = document.getElementById('tutorial-content');
         this.tutorialNextBtn = document.getElementById('tutorial-next-btn');
         
+        // Start button
+        this.startButton = document.getElementById('start-game-btn');
+        
         // Initialize UI
         this.initUI();
     }
@@ -88,6 +91,11 @@ export class UIManager {
         if (this.tutorialNextBtn) {
             this.tutorialNextBtn.addEventListener('click', () => this.nextTutorialStep());
         }
+        
+        // Start button
+        if (this.startButton) {
+            this.startButton.addEventListener('click', () => this.onStartGameClick());
+        }
     }
     
     // Click handlers
@@ -125,6 +133,30 @@ export class UIManager {
         if (this.gameManager) {
             this.gameManager.startNewGame();
         }
+    }
+    
+    onStartGameClick() {
+        // Hide loading screen and show game UI
+        if (this.loadingScreen) {
+            this.loadingScreen.style.display = 'none';
+        }
+        
+        if (this.uiContainer) {
+            this.uiContainer.style.display = 'flex';
+        }
+        
+        if (this.statusDisplay) {
+            this.statusDisplay.style.display = 'block';
+        }
+        
+        // Start background music (user interaction allows audio to play)
+        if (this.soundManager) {
+            this.soundManager.resumeAudioContext();
+            this.soundManager.startBackgroundMusic();
+        }
+        
+        // Show tutorial
+        this.showTutorial();
     }
     
     // ... Keep the existing methods ...
@@ -173,28 +205,16 @@ export class UIManager {
             this.loadingText.textContent = `Loading assets: ${Math.round(progress)}%`;
         }
         
-        // If loading is complete, hide loading screen after a short delay
+        // If loading is complete, show the start button
         if (progress >= 100) {
             setTimeout(() => {
-                if (this.loadingScreen) {
-                    this.loadingScreen.style.display = 'none';
+                if (this.loadingText) {
+                    this.loadingText.textContent = 'Loading complete!';
                 }
                 
-                if (this.uiContainer) {
-                    this.uiContainer.style.display = 'flex';
+                if (this.startButton) {
+                    this.startButton.style.display = 'block';
                 }
-                
-                if (this.statusDisplay) {
-                    this.statusDisplay.style.display = 'block';
-                }
-                
-                // Start background music when loading is complete
-                if (this.soundManager) {
-                    this.soundManager.startBackgroundMusic();
-                }
-                
-                // Show tutorial
-                this.showTutorial();
             }, 500);
         }
     }
