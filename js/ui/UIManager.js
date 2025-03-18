@@ -1,11 +1,16 @@
 import { GameState } from '../quantum/GameManager.js';
 
 export class UIManager {
-    constructor(gameManager) {
+    constructor(gameManager, soundManager) {
         console.log("Creating UIManager");
         this.gameManager = gameManager;
+        this.soundManager = soundManager;
         this.setupUI();
         this.setupEventListeners();
+    }
+
+    setSoundManager(soundManager) {
+        this.soundManager = soundManager;
     }
 
     setupUI() {
@@ -50,6 +55,7 @@ export class UIManager {
             <button id="stand-btn">Stand</button>
             <button id="double-btn">Double</button>
             <button id="split-btn">Split</button>
+            <button id="new-game-btn">New Game</button>
         `;
         
         // Poker controls
@@ -136,11 +142,16 @@ export class UIManager {
             console.error("Game selection buttons not found in the DOM");
         }
 
+        // Game selection buttons
+        this.addEventListenerSafely('blackjack-btn', 'click', () => this.gameManager.startBlackjack());
+        this.addEventListenerSafely('poker-btn', 'click', () => this.gameManager.startPoker());
+        
         // Blackjack controls
         this.addEventListenerSafely('hit-btn', 'click', () => this.gameManager.playerHit());
         this.addEventListenerSafely('stand-btn', 'click', () => this.gameManager.playerStand());
         this.addEventListenerSafely('double-btn', 'click', () => this.gameManager.playerDouble());
         this.addEventListenerSafely('split-btn', 'click', () => this.gameManager.playerSplit());
+        this.addEventListenerSafely('new-game-btn', 'click', () => this.gameManager.startNewGame());
         
         // Poker controls
         this.addEventListenerSafely('bet-btn', 'click', () => this.gameManager.pokerBet(10));
@@ -384,8 +395,41 @@ export class UIManager {
     }
 
     playSound(soundName) {
-        if (this.gameManager && this.gameManager.soundManager) {
-            this.gameManager.soundManager.play(soundName);
+        if (this.soundManager) {
+            switch (soundName) {
+                case 'cardPlace':
+                    this.soundManager.playCardPlaceSound();
+                    break;
+                case 'cardFlip':
+                    this.soundManager.playCardFlipSound();
+                    break;
+                case 'win':
+                    this.soundManager.playWinSound();
+                    break;
+                case 'lose':
+                    this.soundManager.playLoseSound();
+                    break;
+                case 'superposition':
+                    this.soundManager.playSuperpositionSound();
+                    break;
+                case 'entanglement':
+                    this.soundManager.playEntanglementSound();
+                    break;
+                case 'collapse':
+                    this.soundManager.playCollapseSound();
+                    break;
+                case 'menu':
+                    // Use generic sound for menu actions
+                    this.soundManager.play('menu');
+                    break;
+                case 'start':
+                    // Use generic sound for starting game
+                    this.soundManager.play('start');
+                    break;
+                default:
+                    console.warn(`Sound '${soundName}' not found`);
+                    break;
+            }
         }
     }
 } 

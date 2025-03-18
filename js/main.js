@@ -37,6 +37,7 @@ class QuantumBlackJack {
     
     async init() {
         try {
+            console.log("Version: 202503172048");
             console.log("Starting game initialization...");
             
             // Set up asset loader and load assets
@@ -59,7 +60,7 @@ class QuantumBlackJack {
             this.gameManager = new GameManager();
             
             console.log("Creating UIManager");
-            this.uiManager = new UIManager(this.gameManager);
+            this.uiManager = new UIManager(this.gameManager, this.soundManager);
             
             // Initialize SceneManager first, as it's a dependency for the game
             console.log("Initializing SceneManager...");
@@ -67,6 +68,11 @@ class QuantumBlackJack {
             
             if (!sceneInitialized) {
                 throw new Error("Failed to initialize SceneManager");
+            }
+            
+            // Add audio listener to camera
+            if (this.soundManager && this.sceneManager && this.sceneManager.camera) {
+                this.soundManager.addListenerToCamera(this.sceneManager.camera);
             }
             
             // Initialize GameManager with required dependencies
@@ -79,6 +85,11 @@ class QuantumBlackJack {
             
             // Connect managers
             this.gameManager.setUIManager(this.uiManager);
+            this.gameManager.setSoundManager(this.soundManager);
+            this.uiManager.setSoundManager(this.soundManager);
+            
+            // Setup sound toggle button
+            this.setupSoundToggle();
             
             // Start the render loop
             this.isInitialized = true;
@@ -245,6 +256,31 @@ class QuantumBlackJack {
             loadingText.style.color = 'red';
         } else {
             alert(message);
+        }
+    }
+
+    setupSoundToggle() {
+        const soundToggle = document.getElementById('sound-toggle');
+        if (!soundToggle) return;
+        
+        // Set initial state
+        this.updateSoundToggleUI();
+        
+        // Add click handler
+        soundToggle.addEventListener('click', () => {
+            if (this.soundManager) {
+                this.soundManager.toggleMute();
+                this.updateSoundToggleUI();
+            }
+        });
+    }
+    
+    updateSoundToggleUI() {
+        const soundToggle = document.getElementById('sound-toggle');
+        const soundIcon = soundToggle ? soundToggle.querySelector('.sound-icon') : null;
+        
+        if (soundIcon && this.soundManager) {
+            soundIcon.textContent = this.soundManager.soundEnabled ? '🔊' : '��';
         }
     }
 }

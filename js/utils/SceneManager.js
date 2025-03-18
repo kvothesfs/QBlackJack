@@ -53,9 +53,19 @@ export class SceneManager {
                 return false;
             }
             
-            // Position camera for a good view of the table
-            this.camera.position.set(0, 10, 5);
+            // Improved camera positioning for better card viewing
+            this.camera.position.set(0, 8, 7); // Higher and further back for better overview
             this.camera.lookAt(0, 0, 0);
+
+            // Add orbit controls for better user interaction
+            this.controls = new OrbitControls(this.camera, this.canvas);
+            this.controls.enableDamping = true;
+            this.controls.dampingFactor = 0.05;
+            this.controls.screenSpacePanning = false;
+            this.controls.minDistance = 3;
+            this.controls.maxDistance = 20;
+            this.controls.maxPolarAngle = Math.PI / 2;
+            console.log("Orbit controls added");
 
             // Create renderer
             try {
@@ -71,7 +81,9 @@ export class SceneManager {
                 }
                 
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
                 this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             } catch (rendererError) {
                 console.error("Error creating WebGL renderer:", rendererError);
                 
@@ -134,6 +146,11 @@ export class SceneManager {
             // Update animations and effects
             this.update(0.016); // Approximately 60fps
             
+            // Update orbit controls
+            if (this.controls) {
+                this.controls.update();
+            }
+            
             // Render the scene
             if (this.renderer && this.scene && this.camera) {
                 this.renderer.render(this.scene, this.camera);
@@ -144,28 +161,38 @@ export class SceneManager {
     }
 
     addLights() {
-        // Ambient light for overall illumination
-        const ambientLight = new THREE.AmbientLight(0x404040, 1);
+        // Ambient light for overall illumination - brighter
+        const ambientLight = new THREE.AmbientLight(0x606060, 1.2);
         this.scene.add(ambientLight);
 
-        // Directional light for shadows
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 15, 10);
+        // Directional light for shadows - positioned for better card visibility
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(5, 12, 8);
         directionalLight.castShadow = true;
         directionalLight.shadow.camera.near = 0.1;
         directionalLight.shadow.camera.far = 50;
-        directionalLight.shadow.camera.left = -10;
-        directionalLight.shadow.camera.right = 10;
-        directionalLight.shadow.camera.top = 10;
-        directionalLight.shadow.camera.bottom = -10;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.left = -15;
+        directionalLight.shadow.camera.right = 15;
+        directionalLight.shadow.camera.top = 15;
+        directionalLight.shadow.camera.bottom = -15;
+        directionalLight.shadow.mapSize.width = 4096; // Higher resolution shadows
+        directionalLight.shadow.mapSize.height = 4096;
         this.scene.add(directionalLight);
 
-        // Point light for table
-        const pointLight = new THREE.PointLight(0x00ffff, 0.5);
-        pointLight.position.set(0, 5, 0);
-        this.scene.add(pointLight);
+        // Add a helper light from player's perspective for better card illumination
+        const playerLight = new THREE.PointLight(0xffffff, 0.6);
+        playerLight.position.set(0, 5, 6);
+        this.scene.add(playerLight);
+
+        // Point light for table with quantum-themed color
+        const tableLight = new THREE.PointLight(0x00ffff, 0.7);
+        tableLight.position.set(0, 3, 0);
+        this.scene.add(tableLight);
+        
+        // Add subtle red point light for dealer's side
+        const dealerLight = new THREE.PointLight(0xff6ad5, 0.5); // Magenta
+        dealerLight.position.set(0, 3, -6);
+        this.scene.add(dealerLight);
     }
 
     async addTable() {
@@ -401,18 +428,50 @@ export class SceneManager {
         try {
             console.log(`Adding card: ${card.toString()} at position`, position);
             
-            // Create card mesh
-            const cardGeometry = new THREE.BoxGeometry(1, 0.05, 1.5);
+            // Create card mesh with slightly larger dimensions for better visibility
+            const cardGeometry = new THREE.BoxGeometry(1.2, 0.05, 1.8);
             
-            // Create materials for each side of the card
+            // Create materials for each side of the card - using card's own texture generation methods
+            let frontTexture, backTexture;
+            
+            try {
+                // Use the card's own createCardTexture method if it exists
+                if (typeof card.createCardTexture === 'function') {
+                    console.log("Using card's own texture generation");
+                    frontTexture = card.createCardTexture();
+                } else {
+                    console.log("Falling back to SceneManager texture generation");
+                    frontTexture = this.createCardTexture(card);
+                }
+                
+                // Always use SceneManager's back texture for consistency
+                backTexture = this.createCardBackTexture();
+                
+                console.log("Card textures created successfully");
+            } catch (textureError) {
+                console.error("Error creating card textures:", textureError);
+                // Fallback to simple colored materials if texture creation fails
+                frontTexture = null;
+                backTexture = null;
+            }
+            
+            // Create materials with or without textures
             const materials = [
                 new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Right side
                 new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Left side
                 new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Top edge
                 new THREE.MeshStandardMaterial({ color: 0xcccccc }), // Bottom edge
-                new THREE.MeshStandardMaterial({ map: this.createCardTexture(card) }), // Front face (card face)
-                new THREE.MeshStandardMaterial({ map: this.createCardBackTexture() }) // Back face
+                new THREE.MeshStandardMaterial({ map: frontTexture, roughness: 0.2, metalness: 0.1 }), // Front face
+                new THREE.MeshStandardMaterial({ map: backTexture, roughness: 0.3, metalness: 0.2 }) // Back face
             ];
+            
+            // Save original textures in userData for reference/restoration
+            if (frontTexture) {
+                materials[4].userData.originalMap = frontTexture;
+            }
+            if (backTexture) {
+                materials[5].userData.originalMap = backTexture;
+            }
             
             // Create card mesh with geometry and materials
             const cardMesh = new THREE.Mesh(cardGeometry, materials);
@@ -426,12 +485,16 @@ export class SceneManager {
             // Adjust the Y position slightly to avoid z-fighting with the table
             cardMesh.position.y = 0.03;
             
-            // Add shadow casting
+            // Add shadow casting and receiving
             cardMesh.castShadow = true;
-            cardMesh.receiveShadow = false;
+            cardMesh.receiveShadow = true;
             
-            // Store card reference in userData for raycasting
+            // Store card reference in userData for raycasting and interaction
             cardMesh.userData.card = card;
+            cardMesh.userData.isCard = true; // Mark as card for quick filtering
+            
+            // Store orientation info
+            cardMesh.userData.isPlayerCard = isPlayerCard;
             
             // Add card to the scene
             this.scene.add(cardMesh);
@@ -440,9 +503,19 @@ export class SceneManager {
             // Store mesh reference in card
             card.mesh = cardMesh;
             
+            // Apply quantum effects if the card is already in a quantum state
+            if (card.isInSuperposition) {
+                console.log("Card is in superposition - applying visual effects");
+                this.applyQuantumEffects(cardMesh, card);
+            } else if (card.isEntangled) {
+                console.log("Card is entangled - applying visual effects");
+                this.applyEntanglementEffects(cardMesh, card);
+            }
+            
             // If player card, adjust position to be more visible
             if (isPlayerCard) {
                 cardMesh.position.z += 0.1;
+                cardMesh.rotation.x = -0.2; // Tilt slightly toward camera
             }
             
             console.log("Card added successfully:", card.toString());
@@ -882,5 +955,43 @@ export class SceneManager {
         texture.needsUpdate = true;
         
         return texture;
+    }
+
+    // Apply quantum visual effects to a card mesh
+    applyQuantumEffects(cardMesh, card) {
+        if (!cardMesh || !card) return;
+        
+        // Add cyan glow effect
+        if (cardMesh.material && Array.isArray(cardMesh.material)) {
+            const emissiveIntensity = 0.3 * (1 + Math.sin(card.phase || 0));
+            for (const mat of cardMesh.material) {
+                mat.emissive = new THREE.Color(0, 1, 1);
+                mat.emissiveIntensity = emissiveIntensity;
+            }
+        }
+        
+        // Start pulsing animation
+        if (typeof card.startSuperpositionPulse === 'function') {
+            card.startSuperpositionPulse();
+        }
+    }
+
+    // Apply entanglement visual effects to a card mesh
+    applyEntanglementEffects(cardMesh, card) {
+        if (!cardMesh || !card) return;
+        
+        // Add magenta glow effect
+        if (cardMesh.material && Array.isArray(cardMesh.material)) {
+            const emissiveIntensity = 0.3;
+            for (const mat of cardMesh.material) {
+                mat.emissive = new THREE.Color(1, 0, 1);
+                mat.emissiveIntensity = emissiveIntensity;
+            }
+        }
+        
+        // Start pulsing animation
+        if (typeof card.startEntanglementPulse === 'function') {
+            card.startEntanglementPulse();
+        }
     }
 } 

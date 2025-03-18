@@ -29,478 +29,721 @@ export class SoundManager {
     }
 
     initSounds() {
-        // Add listener to camera (will be done when scene manager is available)
+        // Create sound effects and music
+        this.createSound('cardPlace', 'sfx', false, 0.5);
+        this.createSound('cardFlip', 'sfx', false, 0.6);
+        this.createSound('win', 'sfx', false, 0.8);
+        this.createSound('lose', 'sfx', false, 0.7);
+        this.createSound('bet', 'sfx', false, 0.5);
+        this.createSound('menu', 'sfx', false, 0.6);
+        this.createSound('start', 'sfx', false, 0.7);
+        this.createSound('superposition', 'sfx', false, 0.8);
+        this.createSound('entanglement', 'sfx', false, 0.9);
+        this.createSound('collapse', 'sfx', false, 0.8);
     }
 
     addListenerToCamera(camera) {
-        // Initialize audio first
-        if (!this.isAudioInitialized) {
-            this.initAudio();
-        }
-        
-        if (camera && this.listener) {
+        // Create audio listener if it doesn't exist
+        if (!this.listener) {
+            this.listener = new THREE.AudioListener();
+            this.audioContext = this.listener.context;
+            
+            // Add listener to camera
             camera.add(this.listener);
             
-            // Don't start background music automatically
-            // It will be started after user interaction
-            console.log("Audio listener added to camera");
-        } else {
-            console.error("Cannot add listener to camera: Camera or listener is undefined");
+            // Initialize all sounds now that audio context exists
+            this.initializeAudio();
         }
+    }
+    
+    initializeAudio() {
+        if (this.isAudioInitialized) return;
+        
+        // Create sounds with audio context
+        this.createProceduralSound('cardPlace', 'sfx', false, 0.5);
+        this.createProceduralSound('cardFlip', 'sfx', false, 0.6);
+        this.createProceduralSound('win', 'sfx', false, 0.8);
+        this.createProceduralSound('lose', 'sfx', false, 0.7);
+        this.createProceduralSound('bet', 'sfx', false, 0.5);
+        this.createProceduralSound('menu', 'sfx', false, 0.6);
+        this.createProceduralSound('start', 'sfx', false, 0.7);
+        this.createProceduralSound('superposition', 'sfx', false, 0.8);
+        this.createProceduralSound('entanglement', 'sfx', false, 0.9);
+        this.createProceduralSound('collapse', 'sfx', false, 0.8);
+        
+        // Start background music
+        this.startBackgroundMusic();
+        
+        this.isAudioInitialized = true;
     }
 
     getSound(name) {
-        // Check if the assetLoader exists and has the getSound method
-        if (this.assetLoader && typeof this.assetLoader.getSound === 'function') {
-            return this.assetLoader.getSound(name);
+        if (this.sounds[name]) {
+            return this.sounds[name];
         }
-        // Return null if assetLoader doesn't exist or doesn't have getSound
+        
+        console.error(`Sound '${name}' not found`);
         return null;
     }
 
     createSound(name, category = 'sfx', loop = false, volume = 1.0) {
-        const buffer = this.getSound(name);
-        if (buffer) {
-            // Use loaded sound buffer
-            const sound = new THREE.Audio(this.listener);
-            sound.setBuffer(buffer);
-            sound.setLoop(loop);
-            
-            // Apply volume based on category
-            const categoryVolume = category === 'sfx' ? this.sfxVolume : this.musicVolume;
-            sound.setVolume(volume * categoryVolume * this.masterVolume);
-            
-            // Store by category
-            if (category === 'sfx') {
-                this.sfx[name] = sound;
-            } else if (category === 'music') {
-                this.music[name] = sound;
-            }
-            
-            // Store all sounds
-            this.sounds[name] = {
-                sound,
-                category,
-                baseVolume: volume
-            };
-            
-            return sound;
-        } else {
-            // Create a procedural sound
-            return this.createProceduralSound(name, category, loop, volume);
+        // Create empty placeholder for now (actual sound will be created in initializeAudio)
+        this.sounds[name] = {
+            name: name,
+            category: category,
+            loop: loop,
+            volume: volume,
+            audio: null
+        };
+        
+        // Add to category
+        if (category === 'sfx') {
+            this.sfx[name] = this.sounds[name];
+        } else if (category === 'music') {
+            this.music[name] = this.sounds[name];
         }
     }
 
     createProceduralSound(name, category = 'sfx', loop = false, volume = 1.0) {
-        const sound = new THREE.Audio(this.listener);
-        
-        // Apply volume based on category
-        const categoryVolume = category === 'sfx' ? this.sfxVolume : this.musicVolume;
-        sound.setVolume(volume * categoryVolume * this.masterVolume);
-        
-        // Store by category
-        if (category === 'sfx') {
-            this.sfx[name] = sound;
-        } else if (category === 'music') {
-            this.music[name] = sound;
+        if (!this.listener || !this.audioContext) {
+            console.error("Cannot create sound - AudioListener not initialized");
+            return;
         }
         
-        // Store in all sounds
-        this.sounds[name] = {
-            sound,
-            category,
-            baseVolume: volume,
-            procedural: true
-        };
+        // Get sound if it exists
+        const sound = this.getSound(name);
+        if (!sound) return;
         
-        return sound;
+        // Create audio object
+        const audio = new THREE.Audio(this.listener);
+        sound.audio = audio;
+        
+        // Setup sound based on type
+        switch (name) {
+            case 'cardPlace':
+                this.createCardPlaceSound(audio, volume);
+                break;
+            case 'cardFlip':
+                this.createCardFlipSound(audio, volume);
+                break;
+            case 'win':
+                this.createWinSound(audio, volume);
+                break;
+            case 'lose':
+                this.createLoseSound(audio, volume);
+                break;
+            case 'bet':
+                this.createBetSound(audio, volume);
+                break;
+            case 'menu':
+                this.createMenuSound(audio, volume);
+                break;
+            case 'start':
+                this.createStartSound(audio, volume);
+                break;
+            case 'superposition':
+                this.createSuperpositionSound(audio, volume);
+                break;
+            case 'entanglement':
+                this.createEntanglementSound(audio, volume);
+                break;
+            case 'collapse':
+                this.createCollapseSound(audio, volume);
+                break;
+            default:
+                // Generic sound
+                this.createGenericSound(audio, volume);
+                break;
+        }
+    }
+    
+    // Procedural sound generators
+    createCardPlaceSound(audio, volume = 0.5) {
+        const buffer = this.createSoundBuffer(0.3);
+        const data = buffer.getChannelData(0);
+        
+        // Quick attack, fast decay
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            // Quick thump followed by short decay
+            if (t < 0.01) {
+                data[i] = Math.sin(2 * Math.PI * 100 * t) * (1 - t / 0.01) * 0.8;
+            } else if (t < 0.1) {
+                data[i] = Math.sin(2 * Math.PI * 80 * t) * Math.exp(-(t - 0.01) * 20) * 0.3;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createCardFlipSound(audio, volume = 0.5) {
+        const buffer = this.createSoundBuffer(0.4);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            // Swoosh sound
+            if (t < 0.2) {
+                // Frequency sweep from high to low
+                const freq = 2000 - t * 4000;
+                data[i] = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * 10) * (1 - t / 0.2) * 0.5;
+            } else if (t < 0.4) {
+                // Soft snap at the end
+                const snap = Math.sin(2 * Math.PI * 400 * t) * Math.exp(-(t - 0.2) * 30) * 0.8;
+                data[i] = snap;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createWinSound(audio, volume = 0.7) {
+        const buffer = this.createSoundBuffer(1.0);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 1.0) {
+                // Ascending chime sound
+                const chord = 
+                    Math.sin(2 * Math.PI * 440 * t) * 0.3 +
+                    Math.sin(2 * Math.PI * 554 * t) * 0.3 +
+                    Math.sin(2 * Math.PI * 659 * t) * 0.3;
+                
+                // Apply envelope
+                const env = Math.min(1, t * 10) * Math.exp(-t * 2);
+                
+                // Add vibrato for vaporwave feel
+                const vibrato = Math.sin(2 * Math.PI * 6 * t) * 0.1;
+                
+                data[i] = chord * env * (1 + vibrato);
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createLoseSound(audio, volume = 0.7) {
+        const buffer = this.createSoundBuffer(1.0);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 1.0) {
+                // Descending sad sound
+                const chord = 
+                    Math.sin(2 * Math.PI * (400 - t * 100) * t) * 0.3 +
+                    Math.sin(2 * Math.PI * (500 - t * 150) * t) * 0.2;
+                
+                // Apply envelope
+                const env = Math.min(1, t * 10) * Math.exp(-t * 3);
+                
+                data[i] = chord * env;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createBetSound(audio, volume = 0.5) {
+        const buffer = this.createSoundBuffer(0.3);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 0.3) {
+                // Coins sound
+                const clink1 = Math.sin(2 * Math.PI * 1200 * t) * Math.exp(-(t) * 30) * 0.5;
+                const clink2 = Math.sin(2 * Math.PI * 800 * (t - 0.1)) * Math.exp(-(t - 0.1) * 30) * (t > 0.1 ? 0.7 : 0);
+                
+                data[i] = clink1 + clink2;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createMenuSound(audio, volume = 0.6) {
+        const buffer = this.createSoundBuffer(0.3);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 0.3) {
+                // Menu beep with vaporwave feel
+                const beep = Math.sin(2 * Math.PI * 880 * t) * Math.exp(-t * 10);
+                
+                // Add reverb
+                const reverb = Math.sin(2 * Math.PI * 880 * (t - 0.05)) * Math.exp(-(t - 0.05) * 15) * (t > 0.05 ? 0.3 : 0);
+                
+                data[i] = (beep + reverb) * 0.7;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createStartSound(audio, volume = 0.7) {
+        const buffer = this.createSoundBuffer(0.5);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 0.5) {
+                // Game start sound with vaporwave aesthetic
+                const chord = 
+                    Math.sin(2 * Math.PI * 523.25 * t) * 0.3 + // C
+                    Math.sin(2 * Math.PI * 659.26 * t) * 0.3 + // E
+                    Math.sin(2 * Math.PI * 783.99 * t) * 0.3;  // G
+                
+                // Apply envelope with slow attack and decay
+                const env = (t < 0.1 ? t / 0.1 : 1) * Math.exp(-(t - 0.1) * 3);
+                
+                // Add vibrato for vaporwave feel
+                const vibrato = Math.sin(2 * Math.PI * 5 * t) * 0.1;
+                
+                data[i] = chord * env * (1 + vibrato);
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createSuperpositionSound(audio, volume = 0.8) {
+        const buffer = this.createSoundBuffer(0.8);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 0.8) {
+                // Quantum superposition sound - ethereal and shimmering
+                // Using frequency beats to create a quantum-like interference pattern
+                const f1 = 440 + Math.sin(2 * Math.PI * 0.5 * t) * 20;
+                const f2 = 443 + Math.sin(2 * Math.PI * 0.7 * t) * 20;
+                
+                const wave1 = Math.sin(2 * Math.PI * f1 * t);
+                const wave2 = Math.sin(2 * Math.PI * f2 * t);
+                
+                // Higher frequency shimmer
+                const shimmer = Math.sin(2 * Math.PI * 1200 * t) * Math.sin(2 * Math.PI * 3 * t) * 0.3;
+                
+                // Envelope
+                const env = Math.min(1, t * 5) * Math.exp(-t * 2);
+                
+                data[i] = (wave1 + wave2 + shimmer) * env * 0.3;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createEntanglementSound(audio, volume = 0.8) {
+        const buffer = this.createSoundBuffer(1.0);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 1.0) {
+                // Quantum entanglement sound - two frequencies that intertwine
+                const f1 = 300 + Math.sin(2 * Math.PI * t) * 50;
+                const f2 = 600 + Math.sin(2 * Math.PI * t + Math.PI) * 50; // Phase shifted to create interaction
+                
+                const wave1 = Math.sin(2 * Math.PI * f1 * t) * 0.4;
+                const wave2 = Math.sin(2 * Math.PI * f2 * t) * 0.4;
+                
+                // Create a pulsating interaction between the waves
+                const interaction = Math.sin(2 * Math.PI * 3 * t) * 0.2;
+                
+                // Envelope with slow attack and long decay
+                const env = Math.min(1, t * 3) * Math.exp(-t * 1.5);
+                
+                data[i] = (wave1 + wave2) * (1 + interaction) * env;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createCollapseSound(audio, volume = 0.8) {
+        const buffer = this.createSoundBuffer(0.5);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 0.5) {
+                // Quantum collapse sound - high frequency descending to a point
+                const freq = 2000 - t * 3000; // Rapid decline in frequency
+                
+                const wave = Math.sin(2 * Math.PI * freq * t) * 0.5;
+                
+                // Add some noise during collapse
+                const noise = (Math.random() * 2 - 1) * Math.exp(-t * 20) * 0.3;
+                
+                // Snappy envelope
+                const env = Math.exp(-t * 8);
+                
+                data[i] = (wave + noise) * env;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createGenericSound(audio, volume = 0.5) {
+        const buffer = this.createSoundBuffer(0.3);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / buffer.sampleRate;
+            
+            if (t < 0.3) {
+                // Simple beep
+                const beep = Math.sin(2 * Math.PI * 440 * t) * Math.exp(-t * 10);
+                data[i] = beep * 0.7;
+            }
+        }
+        
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = volume * this.masterVolume * this.sfxVolume;
+        
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        audio.setNodeSource(source);
+    }
+    
+    createSoundBuffer(duration = 1.0) {
+        const sampleRate = this.audioContext.sampleRate;
+        const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate);
+        return buffer;
     }
 
     startBackgroundMusic() {
-        // Make sure audio is initialized
-        if (!this.isAudioInitialized) {
-            this.initAudio();
+        // Create ambient vaporwave background music
+        if (!this.audioContext) {
+            console.error("Cannot start background music - AudioContext not initialized");
+            return;
         }
         
-        // Make sure audio context is running
-        this.resumeAudioContext();
+        // Create oscillators for chords
+        const synthA = this.audioContext.createOscillator();
+        const synthB = this.audioContext.createOscillator();
+        const synthC = this.audioContext.createOscillator();
+        const synthD = this.audioContext.createOscillator();
         
-        // Don't start music if sound is disabled
-        if (!this.soundEnabled) return;
+        // Set waveform types
+        synthA.type = 'sine';
+        synthB.type = 'triangle';
+        synthC.type = 'sine';
+        synthD.type = 'sawtooth';
         
-        // Create vaporwave style background music
-        const musicSound = new THREE.Audio(this.listener);
+        // Set initial frequencies for vaporwave chord
+        synthA.frequency.value = 261.63; // C4
+        synthB.frequency.value = 329.63; // E4
+        synthC.frequency.value = 392.00; // G4
+        synthD.frequency.value = 130.81; // C3 (bass)
         
-        // Create audio source
-        const oscillator1 = this.audioContext.createOscillator();
-        const oscillator2 = this.audioContext.createOscillator();
-        const oscillator3 = this.audioContext.createOscillator();
+        // Create gain nodes for volume control
+        const gainA = this.audioContext.createGain();
+        const gainB = this.audioContext.createGain();
+        const gainC = this.audioContext.createGain();
+        const gainD = this.audioContext.createGain();
         
-        // Set oscillator types
-        oscillator1.type = 'sine';
-        oscillator2.type = 'sine';
-        oscillator3.type = 'triangle';
-        
-        // Set frequencies for synth chord (vaporwave style)
-        oscillator1.frequency.value = 220; // A3
-        oscillator2.frequency.value = 277.18; // C#4
-        oscillator3.frequency.value = 329.63; // E4
-        
-        // Create gain nodes
-        const gain1 = this.audioContext.createGain();
-        const gain2 = this.audioContext.createGain();
-        const gain3 = this.audioContext.createGain();
-        const masterGain = this.audioContext.createGain();
-        
-        // Set volumes
-        gain1.gain.value = 0.15;
-        gain2.gain.value = 0.15;
-        gain3.gain.value = 0.10;
-        masterGain.gain.value = 0.2 * this.musicVolume * this.masterVolume;
+        // Set initial volumes
+        gainA.gain.value = 0.15 * this.musicVolume * this.masterVolume;
+        gainB.gain.value = 0.12 * this.musicVolume * this.masterVolume;
+        gainC.gain.value = 0.10 * this.musicVolume * this.masterVolume;
+        gainD.gain.value = 0.20 * this.musicVolume * this.masterVolume;
         
         // Connect oscillators to gain nodes
-        oscillator1.connect(gain1);
-        oscillator2.connect(gain2);
-        oscillator3.connect(gain3);
+        synthA.connect(gainA);
+        synthB.connect(gainB);
+        synthC.connect(gainC);
+        synthD.connect(gainD);
         
-        // Connect gain nodes to master gain
-        gain1.connect(masterGain);
-        gain2.connect(masterGain);
-        gain3.connect(masterGain);
+        // Create reverb for vaporwave feel
+        const convolver = this.audioContext.createConvolver();
+        const reverbBuffer = this.createReverbBuffer(2, this.audioContext.sampleRate, 3);
+        convolver.buffer = reverbBuffer;
         
-        // Connect master gain to audio destination
+        // Connect gain nodes to convolver
+        gainA.connect(convolver);
+        gainB.connect(convolver);
+        gainC.connect(convolver);
+        gainD.connect(convolver);
+        
+        // Create master gain for all music
+        const masterGain = this.audioContext.createGain();
+        masterGain.gain.value = this.musicVolume * this.masterVolume;
+        
+        // Connect convolver to master gain
+        convolver.connect(masterGain);
+        
+        // Connect master gain to destination
         masterGain.connect(this.audioContext.destination);
         
         // Start oscillators
-        oscillator1.start();
-        oscillator2.start();
-        oscillator3.start();
+        synthA.start();
+        synthB.start();
+        synthC.start();
+        synthD.start();
         
-        // Add LFO for slow pulsing effect
-        const lfo = this.audioContext.createOscillator();
-        lfo.type = 'sine';
-        lfo.frequency.value = 0.1; // Very slow modulation
-        
-        const lfoGain = this.audioContext.createGain();
-        lfoGain.gain.value = 0.1;
-        
-        lfo.connect(lfoGain);
-        lfoGain.connect(masterGain.gain);
-        lfo.start();
-        
-        // Store references
+        // Store references for later use
         this.backgroundMusic = {
-            oscillators: [oscillator1, oscillator2, oscillator3, lfo],
-            gains: [gain1, gain2, gain3, lfoGain, masterGain]
+            synths: [synthA, synthB, synthC, synthD],
+            gains: [gainA, gainB, gainC, gainD],
+            masterGain: masterGain,
+            isPlaying: true
         };
         
         // Schedule chord changes
         this.scheduleChordChanges();
     }
-
+    
+    createReverbBuffer(duration, sampleRate, decay = 2.0) {
+        const length = sampleRate * duration;
+        const buffer = this.audioContext.createBuffer(2, length, sampleRate);
+        const dataL = buffer.getChannelData(0);
+        const dataR = buffer.getChannelData(1);
+        
+        for (let i = 0; i < length; i++) {
+            const t = i / sampleRate;
+            const amplitude = Math.exp(-t * decay);
+            
+            // Add some randomness for a natural reverb
+            dataL[i] = (Math.random() * 2 - 1) * amplitude;
+            dataR[i] = (Math.random() * 2 - 1) * amplitude;
+        }
+        
+        return buffer;
+    }
+    
     scheduleChordChanges() {
-        // Change chords every 10 seconds
+        if (!this.backgroundMusic || !this.backgroundMusic.isPlaying) return;
+        
+        // Define chord progressions for vaporwave
+        const chords = [
+            // Cmaj7: C E G B
+            [261.63, 329.63, 392.00, 493.88, 130.81],
+            // Fmaj7: F A C E
+            [349.23, 440.00, 523.25, 659.26, 174.61],
+            // Dm7: D F A C
+            [293.66, 349.23, 440.00, 523.25, 146.83],
+            // G7: G B D F
+            [392.00, 493.88, 587.33, 698.46, 196.00]
+        ];
+        
+        // Change chords every 8 seconds
         setInterval(() => {
-            if (!this.soundEnabled || !this.backgroundMusic) return;
+            if (!this.backgroundMusic || !this.backgroundMusic.isPlaying) return;
             
-            const chords = [
-                // A minor (A, C, E)
-                [220, 261.63, 329.63],
-                // F major (F, A, C)
-                [174.61, 220, 261.63],
-                // C major (C, E, G)
-                [261.63, 329.63, 392],
-                // G major (G, B, D)
-                [196, 246.94, 293.66]
-            ];
+            // Select a random chord
+            const chord = chords[Math.floor(Math.random() * chords.length)];
             
-            const randomChord = chords[Math.floor(Math.random() * chords.length)];
+            // Change frequencies gradually
+            const [synthA, synthB, synthC, synthD] = this.backgroundMusic.synths;
             
-            // Smoothly transition to new frequencies
-            const [osc1, osc2, osc3] = this.backgroundMusic.oscillators;
-            
-            osc1.frequency.setTargetAtTime(randomChord[0], this.audioContext.currentTime, 1);
-            osc2.frequency.setTargetAtTime(randomChord[1], this.audioContext.currentTime, 1);
-            osc3.frequency.setTargetAtTime(randomChord[2], this.audioContext.currentTime, 1);
-            
-        }, 10000);
+            // Use exponential ramps for smooth transitions
+            const now = this.audioContext.currentTime;
+            synthA.frequency.exponentialRampToValueAtTime(chord[0], now + 2);
+            synthB.frequency.exponentialRampToValueAtTime(chord[1], now + 2);
+            synthC.frequency.exponentialRampToValueAtTime(chord[2], now + 2);
+            synthD.frequency.exponentialRampToValueAtTime(chord[4], now + 2); // Bass note
+        }, 8000);
     }
 
     stopBackgroundMusic() {
-        if (this.backgroundMusic) {
-            // Stop oscillators
-            this.backgroundMusic.oscillators.forEach(osc => {
-                osc.stop();
-            });
+        if (!this.backgroundMusic) return;
+        
+        // Gradually fade out
+        if (this.backgroundMusic.masterGain) {
+            const now = this.audioContext.currentTime;
+            this.backgroundMusic.masterGain.gain.exponentialRampToValueAtTime(0.001, now + 1);
             
-            // Disconnect gains
-            this.backgroundMusic.gains.forEach(gain => {
-                gain.disconnect();
-            });
-            
-            this.backgroundMusic = null;
+            // Stop after fade out
+            setTimeout(() => {
+                if (this.backgroundMusic.synths) {
+                    for (const synth of this.backgroundMusic.synths) {
+                        synth.stop();
+                    }
+                }
+                this.backgroundMusic.isPlaying = false;
+            }, 1000);
         }
+    }
+
+    // Sound playback methods
+    playCardPlaceSound(playbackRate = 1.0) {
+        this.play('cardPlace', playbackRate);
+    }
+    
+    playCardFlipSound(playbackRate = 1.0) {
+        this.play('cardFlip', playbackRate);
+    }
+    
+    playSuperpositionSound() {
+        this.play('superposition');
+    }
+    
+    playEntanglementSound() {
+        this.play('entanglement');
+    }
+    
+    playCollapseSound() {
+        this.play('collapse');
+    }
+    
+    playWinSound() {
+        this.play('win');
+    }
+    
+    playLoseSound() {
+        this.play('lose');
+    }
+    
+    playBetSound() {
+        this.play('bet');
+    }
+    
+    playMenuSound() {
+        this.play('menu');
+    }
+    
+    playStartSound() {
+        this.play('start');
     }
 
     play(name, playbackRate = 1.0) {
         if (!this.soundEnabled) return;
         
-        if (this.sounds[name]) {
-            const soundData = this.sounds[name];
+        const sound = this.getSound(name);
+        if (!sound || !sound.audio) {
+            // Try to create the sound if it doesn't exist
+            this.createProceduralSound(name);
             
-            // For procedural sounds, generate them on the fly
-            if (soundData.procedural) {
-                return this.playProceduralSound(name, playbackRate);
+            // Try again after creation
+            const newSound = this.getSound(name);
+            if (!newSound || !newSound.audio) {
+                console.error(`Cannot play sound '${name}' - Sound not initialized`);
+                return;
             }
             
-            const sound = soundData.sound;
-            
-            // If already playing, stop and reset
-            if (sound.isPlaying) {
-                sound.stop();
-            }
-            
-            // Play the sound with the given playback rate
-            sound.setPlaybackRate(playbackRate);
-            sound.play();
-            return sound;
-        } else {
-            // Try to create the sound if it doesn't exist yet
-            const buffer = this.getSound(name);
-            if (buffer) {
-                const sound = this.createSound(name);
-                if (sound) {
-                    sound.setPlaybackRate(playbackRate);
-                    sound.play();
-                    return sound;
-                }
-            } else {
-                // Create and play procedural sound
-                return this.playProceduralSound(name, playbackRate);
-            }
+            // Play the newly created sound
+            newSound.audio.setPlaybackRate(playbackRate);
+            newSound.audio.play();
+            return;
         }
         
-        console.warn(`Sound ${name} not found or failed to play.`);
-        return null;
-    }
-
-    playProceduralSound(name, playbackRate = 1.0) {
-        // Configure sound based on type
-        switch (name) {
-            case 'cardPlace':
-                return this.playCardPlaceSound(playbackRate);
-            case 'cardFlip':
-                return this.playCardFlipSound(playbackRate);
-            case 'win':
-                return this.playWinSound();
-            case 'lose':
-                return this.playLoseSound();
-            case 'superposition':
-                return this.playSuperpositionSound();
-            case 'entanglement':
-                return this.playEntanglementSound();
-            case 'collapse':
-                return this.playCollapseSound();
-            default:
-                console.warn(`No procedural sound defined for ${name}`);
-                return null;
-        }
-    }
-    
-    playTone(frequency, duration, type = 'sine', volume = 0.5, fadeDuration = 0.1) {
-        if (!this.soundEnabled) return null;
+        // Recreate the sound for each play
+        // This allows multiple instances of the same sound to play simultaneously
+        this.createProceduralSound(name, sound.category, sound.loop, sound.volume);
         
-        // Initialize audio if needed
-        if (!this.isAudioInitialized) {
-            this.initAudio();
-        }
-        
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.type = type;
-        oscillator.frequency.value = frequency;
-        
-        gainNode.gain.value = 0;
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        const now = this.audioContext.currentTime;
-        
-        // Fade in
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(volume, now + fadeDuration);
-        
-        // Fade out
-        gainNode.gain.linearRampToValueAtTime(0, now + duration);
-        
-        oscillator.start(now);
-        oscillator.stop(now + duration + 0.1); // Add a little extra time for the fade out
-        
-        return {
-            oscillator,
-            gainNode,
-            endTime: now + duration
-        };
-    }
-
-    playSweep(startFreq, endFreq, duration, type = 'sine', volume = 0.5) {
-        if (!this.soundEnabled) return null;
-        
-        // Initialize audio if needed
-        if (!this.isAudioInitialized) {
-            this.initAudio();
-        }
-        
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.type = type;
-        oscillator.frequency.value = startFreq;
-        
-        gainNode.gain.value = volume;
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        const now = this.audioContext.currentTime;
-        
-        // Frequency sweep
-        oscillator.frequency.linearRampToValueAtTime(endFreq, now + duration);
-        
-        // Amplitude envelope
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(volume, now + duration * 0.1);
-        gainNode.gain.linearRampToValueAtTime(0, now + duration);
-        
-        oscillator.start(now);
-        oscillator.stop(now + duration + 0.1);
-        
-        return {
-            oscillator,
-            gainNode,
-            endTime: now + duration
-        };
-    }
-
-    playNoise(duration, volume = 0.5) {
-        if (!this.soundEnabled) return null;
-        
-        // Initialize audio if needed
-        if (!this.isAudioInitialized) {
-            this.initAudio();
-        }
-        
-        // Create buffer for white noise
-        const bufferSize = this.audioContext.sampleRate * duration;
-        const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
-        const data = buffer.getChannelData(0);
-        
-        // Fill with random values
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-        
-        const noise = this.audioContext.createBufferSource();
-        noise.buffer = buffer;
-        
-        const gainNode = this.audioContext.createGain();
-        gainNode.gain.value = volume;
-        
-        noise.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        const now = this.audioContext.currentTime;
-        
-        // Amplitude envelope
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(volume, now + duration * 0.1);
-        gainNode.gain.linearRampToValueAtTime(0, now + duration);
-        
-        noise.start(now);
-        
-        return {
-            source: noise,
-            gainNode,
-            endTime: now + duration
-        };
-    }
-
-    playCardPlaceSound(playbackRate = 1.0) {
-        // Vaporwave aesthetic card place sound
-        const duration = 0.2 / playbackRate;
-        const volume = 0.3 * this.sfxVolume * this.masterVolume;
-        
-        // Play two tones with slight delay
-        this.playTone(880, duration, 'sine', volume * 0.7, duration * 0.5);
-        
-        return this.playTone(440, duration * 1.5, 'sine', volume, duration * 0.5);
-    }
-
-    playCardFlipSound(playbackRate = 1.0) {
-        // Vaporwave aesthetic card flip sound
-        const duration = 0.3 / playbackRate;
-        const volume = 0.3 * this.sfxVolume * this.masterVolume;
-        
-        // Sweep from high to low frequency
-        return this.playSweep(1200, 300, duration, 'sine', volume);
-    }
-
-    playSuperpositionSound() {
-        // Vaporwave aesthetic superposition sound
-        const volume = 0.4 * this.sfxVolume * this.masterVolume;
-        
-        // Ethereal rising chord
-        this.playTone(440, 0.5, 'sine', volume * 0.7);
-        this.playTone(554.37, 0.6, 'sine', volume * 0.5, 0.1);
-        return this.playTone(659.25, 0.7, 'sine', volume * 0.3, 0.2);
-    }
-
-    playEntanglementSound() {
-        // Vaporwave aesthetic entanglement sound
-        const volume = 0.4 * this.sfxVolume * this.masterVolume;
-        
-        // Two tones that converge
-        this.playSweep(300, 440, 0.5, 'sine', volume * 0.5);
-        return this.playSweep(600, 440, 0.5, 'sine', volume * 0.5);
-    }
-
-    playCollapseSound() {
-        // Vaporwave aesthetic collapse sound
-        const volume = 0.4 * this.sfxVolume * this.masterVolume;
-        
-        // Descending tones with noise
-        this.playSweep(880, 220, 0.4, 'sine', volume * 0.6);
-        this.playNoise(0.3, volume * 0.2);
-        
-        return this.playTone(220, 0.5, 'square', volume * 0.3, 0.05);
-    }
-
-    playWinSound() {
-        // Vaporwave aesthetic win sound
-        const volume = 0.5 * this.sfxVolume * this.masterVolume;
-        
-        // Rising arpeggio
-        this.playTone(440, 0.2, 'sine', volume * 0.7);
-        setTimeout(() => this.playTone(554.37, 0.2, 'sine', volume * 0.8), 150);
-        setTimeout(() => this.playTone(659.25, 0.2, 'sine', volume * 0.9), 300);
-        setTimeout(() => this.playTone(880, 0.4, 'sine', volume), 450);
-        
-        return { isPlaying: true };
-    }
-
-    playLoseSound() {
-        // Vaporwave aesthetic lose sound
-        const volume = 0.5 * this.sfxVolume * this.masterVolume;
-        
-        // Descending tones
-        this.playTone(440, 0.2, 'sine', volume * 0.7);
-        setTimeout(() => this.playTone(415.3, 0.2, 'sine', volume * 0.8), 150);
-        setTimeout(() => this.playTone(392, 0.2, 'sine', volume * 0.9), 300);
-        setTimeout(() => this.playTone(349.23, 0.4, 'sine', volume), 450);
-        
-        return { isPlaying: true };
+        // Play the sound
+        sound.audio.setPlaybackRate(playbackRate);
+        sound.audio.play();
     }
 
     stop(name) {

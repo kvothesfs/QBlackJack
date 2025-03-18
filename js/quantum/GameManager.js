@@ -4,6 +4,7 @@ import { CardState } from './CardState.js';
 import * as THREE from 'three';
 import { TexasHoldEm } from './TexasHoldEm.js';
 import { BlackjackGame } from './BlackjackGame.js';
+import { TutorialManager } from '../ui/TutorialManager.js';
 
 // Game states
 export const GameState = {
@@ -33,6 +34,9 @@ export class GameManager extends EventEmitter {
         // Initialize game instances
         this.blackjackGame = new BlackjackGame(this);
         this.pokerGame = new TexasHoldEm(this);
+        
+        // Initialize tutorial manager
+        this.tutorialManager = new TutorialManager(this);
     }
 
     initialize(sceneManager, assetLoader, uiManager) {
@@ -55,6 +59,9 @@ export class GameManager extends EventEmitter {
             // Set up mouse events for card selection
             this.setupMouseEvents();
             
+            // Set up menu buttons
+            this.setupMenuButtons();
+            
             // Mark as initialized
             this.initialized = true;
             
@@ -63,6 +70,101 @@ export class GameManager extends EventEmitter {
         } catch (error) {
             console.error("Error initializing GameManager:", error);
             return false;
+        }
+    }
+    
+    setupMenuButtons() {
+        // Create menu container if it doesn't exist
+        let menuContainer = document.querySelector('.game-menu');
+        if (!menuContainer) {
+            menuContainer = document.createElement('div');
+            menuContainer.className = 'game-menu';
+            menuContainer.style.position = 'absolute';
+            menuContainer.style.top = '10px';
+            menuContainer.style.right = '10px';
+            menuContainer.style.zIndex = '1000';
+            document.body.appendChild(menuContainer);
+        }
+        
+        // Create new game button
+        const newGameBtn = document.createElement('button');
+        newGameBtn.id = 'new-game-btn';
+        newGameBtn.textContent = 'New Game';
+        newGameBtn.className = 'menu-btn';
+        newGameBtn.style.display = 'none';
+        newGameBtn.style.marginBottom = '10px';
+        newGameBtn.style.backgroundColor = '#ff00ff';
+        newGameBtn.style.color = '#00ffff';
+        newGameBtn.style.border = 'none';
+        newGameBtn.style.padding = '10px 20px';
+        newGameBtn.style.borderRadius = '5px';
+        newGameBtn.style.fontFamily = "'VT323', monospace";
+        newGameBtn.style.fontSize = '18px';
+        newGameBtn.style.cursor = 'pointer';
+        newGameBtn.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
+        
+        // Create main menu button
+        const mainMenuBtn = document.createElement('button');
+        mainMenuBtn.id = 'main-menu-btn';
+        mainMenuBtn.textContent = 'Main Menu';
+        mainMenuBtn.className = 'menu-btn';
+        mainMenuBtn.style.display = 'none';
+        mainMenuBtn.style.backgroundColor = '#ff00ff';
+        mainMenuBtn.style.color = '#00ffff';
+        mainMenuBtn.style.border = 'none';
+        mainMenuBtn.style.padding = '10px 20px';
+        mainMenuBtn.style.borderRadius = '5px';
+        mainMenuBtn.style.fontFamily = "'VT323', monospace";
+        mainMenuBtn.style.fontSize = '18px';
+        mainMenuBtn.style.cursor = 'pointer';
+        mainMenuBtn.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
+        
+        // Add event listeners
+        newGameBtn.addEventListener('click', () => this.startNewGame());
+        mainMenuBtn.addEventListener('click', () => this.returnToMainMenu());
+        
+        // Add buttons to container
+        menuContainer.appendChild(newGameBtn);
+        menuContainer.appendChild(mainMenuBtn);
+    }
+    
+    showMenuButtons() {
+        const newGameBtn = document.getElementById('new-game-btn');
+        const mainMenuBtn = document.getElementById('main-menu-btn');
+        
+        if (newGameBtn) newGameBtn.style.display = 'block';
+        if (mainMenuBtn) mainMenuBtn.style.display = 'block';
+    }
+    
+    hideMenuButtons() {
+        const newGameBtn = document.getElementById('new-game-btn');
+        const mainMenuBtn = document.getElementById('main-menu-btn');
+        
+        if (newGameBtn) newGameBtn.style.display = 'none';
+        if (mainMenuBtn) mainMenuBtn.style.display = 'none';
+    }
+    
+    returnToMainMenu() {
+        // Clear the table
+        this.clearTable();
+        
+        // Hide game container and menu buttons
+        const gameContainer = document.getElementById('game-container');
+        if (gameContainer) gameContainer.style.display = 'none';
+        
+        this.hideMenuButtons();
+        
+        // Show game selection
+        const gameSelection = document.getElementById('game-selection');
+        if (gameSelection) gameSelection.style.display = 'flex';
+        
+        // Reset game state
+        this.gameType = null;
+        this.gameState = GameState.IDLE;
+        
+        // Play sound effect
+        if (this.uiManager) {
+            this.uiManager.playSound('menu');
         }
     }
 
@@ -97,98 +199,48 @@ export class GameManager extends EventEmitter {
             // Set game type
             this.gameType = type;
             
-            // Initialize game based on type (lazy loading)
+            // Show game container and menu buttons
+            const gameContainer = document.getElementById('game-container');
+            if (gameContainer) gameContainer.style.display = 'block';
+            
+            this.showMenuButtons();
+            
+            // Initialize game based on type
             if (type === 'blackjack') {
                 console.log("Loading Blackjack game...");
                 
-                // Only create a new instance if one doesn't exist
-                if (!this.blackjackGame) {
-                    // Dynamic import for the BlackjackGame class
-                    import('./BlackjackGame.js').then(module => {
-                        const BlackjackGame = module.BlackjackGame;
-                        this.blackjackGame = new BlackjackGame(this);
-                        
-                        // Initialize the game
-                        this.blackjackGame.initialize();
-                        
-                        // Set game state
-                        this.gameState = GameState.BETTING;
-                        
-                        console.log("Blackjack game loaded and initialized");
-                        
-                        // Show tutorial if not shown before
-                        if (!this.tutorialShown) {
-                            this.showTutorial('blackjack');
-                        } else {
-                            // Start new game
-                            this.startNewGame();
-                        }
-                    }).catch(error => {
-                        console.error("Error loading BlackjackGame:", error);
-                        return false;
-                    });
+                // Initialize the game
+                this.blackjackGame.initialize();
+                
+                // Set game state
+                this.gameState = GameState.BETTING;
+                
+                console.log("Blackjack game loaded and initialized");
+                
+                // Show tutorial if not shown before
+                if (!this.tutorialManager.tutorialShown.blackjack) {
+                    this.tutorialManager.showTutorial('blackjack');
                 } else {
-                    // Just initialize the existing instance
-                    this.blackjackGame.initialize();
-                    
-                    // Set game state
-                    this.gameState = GameState.BETTING;
-                    
-                    console.log("Using existing Blackjack game instance");
-                    
-                    // Show tutorial or start game
-                    if (!this.tutorialShown) {
-                        this.showTutorial('blackjack');
-                    } else {
-                        // Start new game
-                        this.startNewGame();
-                    }
+                    // Start new game
+                    this.startNewGame();
                 }
             } else if (type === 'poker') {
                 console.log("Loading Texas Hold'Em game...");
                 
-                // Only create a new instance if one doesn't exist
-                if (!this.pokerGame) {
-                    // Dynamic import for the TexasHoldEm class
-                    import('./TexasHoldEm.js').then(module => {
-                        const TexasHoldEm = module.TexasHoldEm;
-                        this.pokerGame = new TexasHoldEm(this);
-                        
-                        // Initialize the game
-                        this.pokerGame.initialize();
-                        
-                        // Set game state
-                        this.gameState = GameState.BETTING;
-                        
-                        console.log("Texas Hold'Em game loaded and initialized");
-                        
-                        // Show tutorial if not shown before
-                        if (!this.tutorialShown) {
-                            this.showTutorial('poker');
-                        } else {
-                            // Start new game
-                            this.startNewGame();
-                        }
-                    }).catch(error => {
-                        console.error("Error loading TexasHoldEm:", error);
-                        return false;
-                    });
+                // Initialize the game
+                this.pokerGame.initialize();
+                
+                // Set game state
+                this.gameState = GameState.BETTING;
+                
+                console.log("Texas Hold'Em game loaded and initialized");
+                
+                // Show tutorial if not shown before
+                if (!this.tutorialManager.tutorialShown.poker) {
+                    this.tutorialManager.showTutorial('poker');
                 } else {
-                    // Just initialize the existing instance
-                    this.pokerGame.initialize();
-                    
-                    // Set game state
-                    this.gameState = GameState.BETTING;
-                    
-                    console.log("Using existing Texas Hold'Em game instance");
-                    
-                    // Show tutorial or start game
-                    if (!this.tutorialShown) {
-                        this.showTutorial('poker');
-                    } else {
-                        // Start new game
-                        this.startNewGame();
-                    }
+                    // Start new game
+                    this.startNewGame();
                 }
             }
             
@@ -275,62 +327,35 @@ export class GameManager extends EventEmitter {
     }
 
     startNewGame() {
-        console.log("Starting new game of type:", this.gameType);
+        console.log("Starting new game");
         
-        if (!this.initialized) {
-            console.error("Cannot start game - GameManager not initialized");
-            return false;
+        // Clear the table
+        this.clearTable();
+        
+        // Reset game-specific state
+        if (this.gameType === 'blackjack') {
+            this.blackjackGame.reset();
+            this.blackjackGame.createDeck();
+            this.blackjackGame.shuffleDeck();
+            this.blackjackGame.dealInitialCards();
+        } else if (this.gameType === 'poker') {
+            this.pokerGame.reset();
+            this.pokerGame.createDeck();
+            this.pokerGame.shuffleDeck();
+            this.pokerGame.dealInitialCards();
         }
         
-        try {
-            // Reset selection state
-            this.selectedCard = null;
-            this.entanglementMode = false;
-            this.entanglementCard1 = null;
-            
-            if (this.gameType === 'blackjack') {
-                if (!this.blackjackGame) {
-                    console.error("Blackjack game not initialized");
-                    return false;
-                }
-                
-                // Start new blackjack game
-                this.blackjackGame.startNewGame();
-                
-                // Update game state
-                this.gameState = GameState.PLAYING;
-                
-                // Update UI
-                if (this.uiManager) {
-                    this.uiManager.updateStatus("Blackjack game started. Your turn!");
-                }
-                
-                return true;
-            } else if (this.gameType === 'poker') {
-                if (!this.pokerGame) {
-                    console.error("Poker game not initialized");
-                    return false;
-                }
-                
-                // Start new poker game
-                this.pokerGame.startNewGame();
-                
-                // Update game state
-                this.gameState = GameState.PLAYING;
-                
-                // Update UI
-                if (this.uiManager) {
-                    this.uiManager.updateStatus("Texas Hold'Em game started. Place your bets!");
-                }
-                
-                return true;
-            } else {
-                console.error("Cannot start game - Invalid game type:", this.gameType);
-                return false;
-            }
-        } catch (error) {
-            console.error("Error starting new game:", error);
-            return false;
+        // Reset quantum chip counts
+        this.hadamardChips = 3;
+        this.schrodingerChips = 2;
+        this.entanglementChips = 2;
+        
+        // Update UI
+        this.updateUI();
+        
+        // Play sound
+        if (this.uiManager) {
+            this.uiManager.playSound('start');
         }
     }
 
@@ -417,7 +442,7 @@ export class GameManager extends EventEmitter {
     countSuperposedCards() {
         let count = 0;
         if (this.gameType === 'blackjack') {
-            [...this.blackjackGame.playerCards, ...this.blackjackGame.dealerCards].forEach(card => {
+            [...this.blackjackGame.playerHand, ...this.blackjackGame.dealerHand].forEach(card => {
                 if (card.isInSuperposition()) count++;
             });
         }
@@ -427,7 +452,7 @@ export class GameManager extends EventEmitter {
     countEntangledCards() {
         let count = 0;
         if (this.gameType === 'blackjack') {
-            [...this.blackjackGame.playerCards, ...this.blackjackGame.dealerCards].forEach(card => {
+            [...this.blackjackGame.playerHand, ...this.blackjackGame.dealerHand].forEach(card => {
                 if (card.isEntangled()) count++;
             });
         }
@@ -437,6 +462,10 @@ export class GameManager extends EventEmitter {
     // Add a method to safely set the UI manager
     setUIManager(uiManager) {
         this.uiManager = uiManager;
+    }
+    
+    setSoundManager(soundManager) {
+        this.soundManager = soundManager;
     }
     
     // Add a method to update the camera ref if it wasn't available initially
@@ -1127,20 +1156,37 @@ export class GameManager extends EventEmitter {
     }
 
     clearTable() {
-        // Clear selected cards
-        this.deselectCard();
-        this.cardForEntanglement = null;
+        // Clear visual elements
+        if (this.sceneManager) {
+            this.sceneManager.clearScene();
+        }
         
-        // Clear all cards
-        this.sceneManager.clearCards();
-        this.playerCards = [];
-        this.dealerCards = [];
+        // Reset state for active game
+        if (this.gameType === 'blackjack') {
+            this.blackjackGame.playerHand = [];
+            this.blackjackGame.dealerHand = [];
+            this.blackjackGame.playerValue = 0;
+            this.blackjackGame.dealerValue = 0;
+            this.blackjackGame.playerCardCount = 0;
+            this.blackjackGame.dealerCardCount = 0;
+        } else if (this.gameType === 'poker') {
+            this.pokerGame.playerHand = [];
+            this.pokerGame.dealerHand = [];
+            this.pokerGame.communityCards = [];
+            this.pokerGame.playerCardCount = 0;
+            this.pokerGame.dealerCardCount = 0;
+            this.pokerGame.communityCardCount = 0;
+        }
         
-        // Clear any entanglement line
-        this.sceneManager.removeEntanglementLine();
+        // Reset common state
+        this.selectedCard = null;
+        this.entanglementTarget = null;
         
-        // Update hand value
-        this.updateHandValue();
+        // Clear status display
+        const statusDisplay = document.getElementById('status-display');
+        if (statusDisplay) {
+            statusDisplay.textContent = '';
+        }
     }
 
     sleep(ms) {
