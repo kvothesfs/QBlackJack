@@ -59,10 +59,10 @@ export class QuantumCard {
         const materials = [
             new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // right
             new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // left
+            cardMaterial, // front
+            backMaterial,  // back
             new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // top
             new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 }), // bottom
-            cardMaterial, // front
-            backMaterial  // back
         ];
         
         this.mesh = new THREE.Mesh(cardGeometry, materials);
